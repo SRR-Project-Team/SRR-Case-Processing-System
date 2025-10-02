@@ -1,0 +1,459 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+AI请求摘要生成器
+专门从邮件或PDF内容中生成具体的请求摘要，而不是提取邮件的不同部分
+"""
+
+import re
+from typing import Optional, Dict, List, Tuple
+import os
+
+
+class AIRequestSummarizer:
+    """AI请求摘要生成器"""
+    
+    def __init__(self):
+        """初始化摘要生成器"""
+        self.request_patterns = self._build_request_patterns()
+        self.content_extractors = self._build_content_extractors()
+    
+    def _build_request_patterns(self) -> List[Dict]:
+        """构建请求识别模式"""
+        return [
+            # 中文查询模式
+            {
+                'pattern': r'主旨[：:]\s*([^\n]+)',
+                'type': 'subject',
+                'priority': 10,
+                'description': '邮件主旨'
+            },
+            {
+                'pattern': r'查詢([^\n，。]+)',
+                'type': 'inquiry',
+                'priority': 9,
+                'description': '查询请求'
+            },
+            {
+                'pattern': r'投訴([^\n，。]+)',
+                'type': 'complaint',
+                'priority': 9,
+                'description': '投诉内容'
+            },
+            {
+                'pattern': r'要求([^\n，。]+)',
+                'type': 'request',
+                'priority': 8,
+                'description': '具体要求'
+            },
+            {
+                'pattern': r'申請([^\n，。]+)',
+                'type': 'application',
+                'priority': 8,
+                'description': '申请事项'
+            },
+            {
+                'pattern': r'報告([^\n，。]+)',
+                'type': 'report',
+                'priority': 7,
+                'description': '报告事项'
+            },
+            
+            # 英文查询模式
+            {
+                'pattern': r'Subject[：:]\s*([^\n]+)',
+                'type': 'subject',
+                'priority': 10,
+                'description': 'Email Subject'
+            },
+            {
+                'pattern': r'Request for ([^\n,.]+)',
+                'type': 'request',
+                'priority': 8,
+                'description': 'Request for'
+            },
+            {
+                'pattern': r'Enquiry about ([^\n,.]+)',
+                'type': 'inquiry',
+                'priority': 9,
+                'description': 'Enquiry about'
+            },
+            {
+                'pattern': r'Complaint regarding ([^\n,.]+)',
+                'type': 'complaint',
+                'priority': 9,
+                'description': 'Complaint regarding'
+            },
+            {
+                'pattern': r'Application for ([^\n,.]+)',
+                'type': 'application',
+                'priority': 8,
+                'description': 'Application for'
+            },
+            
+            # 具体内容模式
+            {
+                'pattern': r'斜坡[編编號号]*[：:]?\s*([^\s，。\n]+)',
+                'type': 'slope_info',
+                'priority': 6,
+                'description': '斜坡信息'
+            },
+            {
+                'pattern': r'維修工程([^\n，。]+)',
+                'type': 'maintenance',
+                'priority': 7,
+                'description': '维修工程'
+            },
+            {
+                'pattern': r'進度([^\n，。]*)',
+                'type': 'progress',
+                'priority': 6,
+                'description': '进度查询'
+            }
+        ]
+    
+    def _build_content_extractors(self) -> List[Dict]:
+        """构建内容提取器"""
+        return [
+            # TXT文件内容提取
+            {
+                'source': 'txt_outbound',
+                'patterns': [
+                    r'主旨[：:]\s*([^\n]+)',
+                    r'\[Detail\]\s*([^[]+?)(?=\[|$)',
+                    r'Email - Outbound[^[]*?\[Detail\]\s*([^[]+?)(?=\[|$)'
+                ],
+                'priority': 10
+            },
+            {
+                'source': 'txt_inbound',
+                'patterns': [
+                    r'Email - Inbound[^[]*?\[Detail\]\s*([^[]+?)(?=\[|$)',
+                    r'WRITTEN CONTACT INBOUND DETAILS[^[]*?([^[]+?)(?=\[|$)'
+                ],
+                'priority': 8
+            },
+            
+            # 邮件内容提取
+            {
+                'source': 'email_body',
+                'patterns': [
+                    r'We have received the following enquiry[：:]?\s*([^.]+)',
+                    r'The citizen enquires about[：:]?\s*([^.]+)',
+                    r'Enquiry details[：:]?\s*([^.]+)',
+                    r'Request details[：:]?\s*([^.]+)'
+                ],
+                'priority': 9
+            },
+            
+            # PDF内容提取
+            {
+                'source': 'pdf_content',
+                'patterns': [
+                    r'Nature of complaint[：:]?\s*([^\n]+)',
+                    r'Description[：:]?\s*([^\n]+)',
+                    r'Details[：:]?\s*([^\n]+)',
+                    r'Complaint[：:]?\s*([^\n]+)'
+                ],
+                'priority': 7
+            }
+        ]
+    
+    def generate_request_summary(self, content: str, email_content: str = None, 
+                               content_type: str = 'txt') -> str:
+        """
+        生成请求摘要
+        
+        Args:
+            content: 主要内容（TXT/PDF内容）
+            email_content: 邮件内容（可选）
+            content_type: 内容类型 ('txt', 'pdf', 'email')
+            
+        Returns:
+            str: 生成的请求摘要
+        """
+        print("🤖 开始AI请求摘要生成...")
+        
+        # 收集所有可能的请求信息
+        extracted_requests = []
+        
+        # 1. 从主要内容提取
+        if content:
+            main_requests = self._extract_requests_from_content(content, content_type)
+            extracted_requests.extend(main_requests)
+        
+        # 2. 从邮件内容提取
+        if email_content:
+            email_requests = self._extract_requests_from_content(email_content, 'email')
+            extracted_requests.extend(email_requests)
+        
+        # 3. 按优先级排序并生成摘要
+        if extracted_requests:
+            # 按优先级和置信度排序
+            extracted_requests.sort(key=lambda x: (x['priority'], x['confidence']), reverse=True)
+            
+            # 生成智能摘要
+            summary = self._generate_intelligent_summary(extracted_requests)
+            
+            if summary:
+                print(f"✅ AI请求摘要生成成功: {summary}")
+                return summary
+        
+        # 4. 如果没有提取到具体请求，使用传统方法
+        fallback_summary = self._generate_fallback_summary(content, email_content)
+        print(f"⚠️ 使用备用摘要方法: {fallback_summary}")
+        return fallback_summary
+    
+    def _extract_requests_from_content(self, content: str, source_type: str) -> List[Dict]:
+        """从内容中提取请求信息"""
+        requests = []
+        
+        if not content or not content.strip():
+            return requests
+        
+        # 使用请求模式匹配
+        for pattern_info in self.request_patterns:
+            pattern = pattern_info['pattern']
+            matches = re.finditer(pattern, content, re.IGNORECASE | re.MULTILINE)
+            
+            for match in matches:
+                extracted_text = match.group(1).strip() if match.groups() else match.group(0).strip()
+                
+                if extracted_text and len(extracted_text) > 3:  # 过滤太短的匹配
+                    # 计算置信度
+                    confidence = self._calculate_confidence(extracted_text, pattern_info, source_type)
+                    
+                    requests.append({
+                        'text': extracted_text,
+                        'type': pattern_info['type'],
+                        'priority': pattern_info['priority'],
+                        'confidence': confidence,
+                        'source': source_type,
+                        'description': pattern_info['description']
+                    })
+        
+        return requests
+    
+    def _calculate_confidence(self, text: str, pattern_info: Dict, source_type: str) -> float:
+        """计算提取置信度"""
+        confidence = 0.5  # 基础置信度
+        
+        # 根据文本长度调整
+        if 10 <= len(text) <= 100:
+            confidence += 0.2
+        elif len(text) > 100:
+            confidence += 0.1
+        
+        # 根据模式类型调整
+        if pattern_info['type'] in ['subject', 'inquiry', 'complaint']:
+            confidence += 0.2
+        
+        # 根据来源类型调整
+        if source_type == 'txt' and pattern_info['type'] == 'subject':
+            confidence += 0.3
+        elif source_type == 'email' and 'enquiry' in text.lower():
+            confidence += 0.2
+        
+        # 根据关键词调整
+        keywords = ['斜坡', '維修', '工程', '進度', 'slope', 'maintenance', 'repair', 'progress']
+        keyword_count = sum(1 for keyword in keywords if keyword.lower() in text.lower())
+        confidence += keyword_count * 0.1
+        
+        return min(confidence, 1.0)  # 最大置信度为1.0
+    
+    def _generate_intelligent_summary(self, requests: List[Dict]) -> Optional[str]:
+        """生成智能摘要"""
+        if not requests:
+            return None
+        
+        # 选择最高优先级和置信度的请求
+        best_request = requests[0]
+        
+        # 如果是主旨类型，直接使用
+        if best_request['type'] == 'subject' and best_request['confidence'] > 0.7:
+            return self._clean_summary_text(best_request['text'])
+        
+        # 组合多个相关请求
+        summary_parts = []
+        used_types = set()
+        
+        for request in requests[:3]:  # 最多使用前3个请求
+            if request['confidence'] > 0.6 and request['type'] not in used_types:
+                cleaned_text = self._clean_summary_text(request['text'])
+                if cleaned_text:
+                    summary_parts.append(cleaned_text)
+                    used_types.add(request['type'])
+        
+        if summary_parts:
+            # 智能组合摘要
+            if len(summary_parts) == 1:
+                return summary_parts[0]
+            else:
+                # 检查是否可以合并
+                combined = self._combine_summary_parts(summary_parts)
+                return combined
+        
+        return None
+    
+    def _clean_summary_text(self, text: str) -> str:
+        """清理摘要文本"""
+        if not text:
+            return ""
+        
+        # 移除多余的空格和换行
+        text = re.sub(r'\s+', ' ', text).strip()
+        
+        # 移除HTML标签
+        text = re.sub(r'<[^>]+>', '', text)
+        
+        # 移除特殊字符
+        text = re.sub(r'[^\w\s\-/：:，。()（）]', '', text)
+        
+        # 限制长度
+        if len(text) > 150:
+            text = text[:150] + "..."
+        
+        return text
+    
+    def _combine_summary_parts(self, parts: List[str]) -> str:
+        """组合摘要部分"""
+        if not parts:
+            return ""
+        
+        # 检查是否有重复内容
+        unique_parts = []
+        for part in parts:
+            is_duplicate = False
+            for existing in unique_parts:
+                if self._is_similar_content(part, existing):
+                    is_duplicate = True
+                    break
+            if not is_duplicate:
+                unique_parts.append(part)
+        
+        # 智能组合
+        if len(unique_parts) == 1:
+            return unique_parts[0]
+        elif len(unique_parts) <= 3:
+            return " | ".join(unique_parts)
+        else:
+            return unique_parts[0] + " 等多项请求"
+    
+    def _is_similar_content(self, text1: str, text2: str) -> bool:
+        """检查内容是否相似"""
+        if not text1 or not text2:
+            return False
+        
+        # 简单的相似度检查
+        words1 = set(text1.lower().split())
+        words2 = set(text2.lower().split())
+        
+        if len(words1) == 0 or len(words2) == 0:
+            return False
+        
+        intersection = len(words1.intersection(words2))
+        union = len(words1.union(words2))
+        
+        similarity = intersection / union if union > 0 else 0
+        return similarity > 0.6
+    
+    def _generate_fallback_summary(self, content: str, email_content: str = None) -> str:
+        """生成备用摘要"""
+        # 尝试从内容中提取任何有意义的信息
+        fallback_patterns = [
+            r'主旨[：:]\s*([^\n]+)',
+            r'Subject[：:]\s*([^\n]+)',
+            r'查詢([^\n，。]+)',
+            r'Request for ([^\n,.]+)',
+            r'Enquiry about ([^\n,.]+)',
+            r'Description[：:]\s*([^\n]+)',
+            r'Nature of complaint[：:]\s*([^\n]+)'
+        ]
+        
+        sources = [content, email_content] if email_content else [content]
+        
+        for source in sources:
+            if not source:
+                continue
+                
+            for pattern in fallback_patterns:
+                match = re.search(pattern, source, re.IGNORECASE)
+                if match:
+                    extracted = match.group(1).strip()
+                    if extracted and len(extracted) > 5:
+                        return self._clean_summary_text(extracted)
+        
+        # 最后的备用方案
+        if content and len(content.strip()) > 10:
+            # 提取前100个字符作为摘要
+            summary = content.strip()[:100]
+            if len(content.strip()) > 100:
+                summary += "..."
+            return self._clean_summary_text(summary)
+        
+        return "无法提取具体请求内容"
+
+
+def generate_ai_request_summary(content: str, email_content: str = None, 
+                              content_type: str = 'txt') -> str:
+    """
+    生成AI请求摘要的入口函数
+    
+    Args:
+        content: 主要内容
+        email_content: 邮件内容（可选）
+        content_type: 内容类型
+        
+    Returns:
+        str: 生成的请求摘要
+    """
+    summarizer = AIRequestSummarizer()
+    return summarizer.generate_request_summary(content, email_content, content_type)
+
+
+def test_ai_request_summarizer():
+    """测试AI请求摘要生成器"""
+    print("=== AI请求摘要生成器测试 ===\n")
+    
+    # 测试用例
+    test_cases = [
+        {
+            'name': '斜坡维修查询',
+            'content': '主旨：查詢斜坡維修編號11SW-D/805維修工程進度 (檔案編號：3-8641924612)',
+            'email_content': None,
+            'type': 'txt'
+        },
+        {
+            'name': '树木修剪请求',
+            'content': 'Request for tree trimming at slope area 15NE-A/F91',
+            'email_content': 'We have received the following enquiry: The citizen requests tree maintenance work.',
+            'type': 'txt'
+        },
+        {
+            'name': '排水问题投诉',
+            'content': '投訴斜坡排水系統堵塞問題',
+            'email_content': None,
+            'type': 'pdf'
+        }
+    ]
+    
+    for i, test_case in enumerate(test_cases, 1):
+        print(f"📋 测试案例 {i}: {test_case['name']}")
+        
+        try:
+            summary = generate_ai_request_summary(
+                test_case['content'],
+                test_case['email_content'],
+                test_case['type']
+            )
+            
+            print(f"   ✅ 摘要结果: {summary}")
+            
+        except Exception as e:
+            print(f"   ❌ 测试失败: {e}")
+        
+        print()
+
+
+if __name__ == "__main__":
+    test_ai_request_summarizer()
