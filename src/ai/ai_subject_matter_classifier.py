@@ -6,6 +6,35 @@ AI主题分类器 - J_subject_matter字段智能分类
 """
 
 import pandas as pd
+
+def load_srr_rules():
+    """加载SRR规则"""
+    import json
+    import os
+    
+    rules_file = 'models/config/srr_rules.json'
+    if os.path.exists(rules_file):
+        with open(rules_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    else:
+        print("⚠️ SRR规则文件不存在")
+        return {'content': [], 'paragraphs': 0}
+
+
+def load_training_data():
+    """加载训练数据"""
+    import pickle
+    import os
+    
+    data_file = 'models/ai_models/training_data.pkl'
+    if os.path.exists(data_file):
+        with open(data_file, 'rb') as f:
+            data = pickle.load(f)
+        return data.get('srr_data', []), data.get('complaints_data', [])
+    else:
+        print("⚠️ 训练数据文件不存在")
+        return [], []
+
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.ensemble import RandomForestClassifier
@@ -538,8 +567,8 @@ def classify_subject_matter_ai(case_data: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # 历史数据路径
         historical_data_paths = [
-            'depend_data/SRR data 2021-2024.csv',
-            'depend_data/Slopes Complaints & Enquires Under             TC K928   4-10-2021.xlsx'
+            'models/ai_models/training_data.pkl',
+            'models/ai_models/training_data.pkl'
         ]
         
         # 创建分类器

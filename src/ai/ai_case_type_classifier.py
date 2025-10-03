@@ -4,6 +4,35 @@ AI案件类型分类器
 """
 
 import pandas as pd
+
+def load_srr_rules():
+    """加载SRR规则"""
+    import json
+    import os
+    
+    rules_file = 'models/config/srr_rules.json'
+    if os.path.exists(rules_file):
+        with open(rules_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    else:
+        print("⚠️ SRR规则文件不存在")
+        return {'content': [], 'paragraphs': 0}
+
+
+def load_training_data():
+    """加载训练数据"""
+    import pickle
+    import os
+    
+    data_file = 'models/ai_models/training_data.pkl'
+    if os.path.exists(data_file):
+        with open(data_file, 'rb') as f:
+            data = pickle.load(f)
+        return data.get('srr_data', []), data.get('complaints_data', [])
+    else:
+        print("⚠️ 训练数据文件不存在")
+        return [], []
+
 import numpy as np
 import re
 from typing import Dict, List, Optional, Tuple
@@ -21,7 +50,7 @@ from .ai_model_cache import get_cached_model, cache_model
 class SRRCaseTypeClassifier:
     """SRR案件类型AI分类器"""
     
-    def __init__(self, data_path: str = "depend_data"):
+    def __init__(self, data_path: str = "models"):
         self.data_path = data_path
         self.model = None
         self.vectorizer = None
@@ -414,10 +443,10 @@ class SRRCaseTypeClassifier:
         
         # 缓存未命中，正常初始化
         # 加载历史数据
-        self.load_historical_data()
+        self.srr_data, self.complaints_data = load_training_data()
         
         # 加载SRR规则
-        self.load_srr_rules()
+        self.rules_data = load_srr_rules()
         
         # 训练ML模型
         ml_success = self.train_ml_model()
