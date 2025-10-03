@@ -73,6 +73,7 @@ Multi-format    TXT/TMO/RCC    Text/OCR/PDF      Case Type      A-Q Columns
 | Document | Description |
 |----------|-------------|
 | [📋 WORKFLOW_DESIGN.md](WORKFLOW_DESIGN.md) | **Complete system workflow and architecture** |
+| [🗄️ Database Guide](docs/DATABASE_GUIDE.md) | **Database usage and management** |
 | [📖 docs/](docs/) | Complete documentation collection |
 | [🔌 API Documentation](docs/API_DOCUMENTATION.md) | API endpoints and usage |
 | [🚀 Deployment Guide](docs/DEPLOYMENT_GUIDE.md) | Production deployment instructions |

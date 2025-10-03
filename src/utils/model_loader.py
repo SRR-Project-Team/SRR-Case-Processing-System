@@ -53,3 +53,12 @@ class ModelLoader:
             with open(metadata_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
         return {}
+
+    @staticmethod
+    def load_database_model():
+        """加载数据库模型"""
+        data_file = 'models/database_model.py'
+        if os.path.exists(data_file):
+            with open(data_file, 'rb') as f:
+                return pickle.load(f)
+        return None

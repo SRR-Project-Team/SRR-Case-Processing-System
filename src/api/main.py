@@ -41,6 +41,14 @@ from core.output import (
     ProcessingResult
 )
 from utils.smart_file_pairing import SmartFilePairing
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+from database import get_db_manager
+
+# 初始化数据库
+db_manager = get_db_manager()
 
 # 创建FastAPI应用实例
 app = FastAPI(title="SRR案件处理API（A-Q新规则）", version="1.0")
@@ -221,7 +229,36 @@ async def process_srr_file(file: UploadFile = File(...)):
         
         # 使用output模块创建结构化数据
         structured_data = create_structured_data(extracted_data)
-        
+
+        # 保存案件数据到数据库
+        try:
+            case_data = {
+                'A_date_received': structured_data.A_date_received,
+                'B_source': structured_data.B_source,
+                'C_case_number': structured_data.C_case_number,
+                'D_type': structured_data.D_type,
+                'E_caller_name': structured_data.E_caller_name,
+                'F_contact_no': structured_data.F_contact_no,
+                'G_slope_no': structured_data.G_slope_no,
+                'H_location': structured_data.H_location,
+                'I_nature_of_request': structured_data.I_nature_of_request,
+                'J_subject_matter': structured_data.J_subject_matter,
+                'K_10day_rule_due_date': structured_data.K_10day_rule_due_date,
+                'L_icc_interim_due': structured_data.L_icc_interim_due,
+                'M_icc_final_due': structured_data.M_icc_final_due,
+                'N_works_completion_due': structured_data.N_works_completion_due,
+                'O1_fax_to_contractor': structured_data.O1_fax_to_contractor,
+                'O2_email_send_time': structured_data.O2_email_send_time,
+                'P_fax_pages': structured_data.P_fax_pages,
+                'Q_case_details': structured_data.Q_case_details,
+                'original_filename': file.filename,
+                'file_type': processing_type
+            }
+            case_id = db_manager.save_case(case_data)
+            print(f"✅ 案件保存成功，ID: {case_id}")
+        except Exception as db_error:
+            print(f"⚠️ 数据库保存失败: {db_error}")
+
         # 返回成功结果
         return create_success_result(file.filename, structured_data)
         
@@ -429,6 +466,26 @@ async def process_multiple_files(files: List[UploadFile] = File(...)):
         "results": results
     }
 
+# 案件管理
+@app.get("/api/cases")
+async def get_cases(limit: int = 100, offset: int = 0):
+    """获取案件列表"""
+    cases = db_manager.get_cases(limit, offset)
+    return {"cases": cases, "total": len(cases)}
+
+@app.get("/api/cases/{case_id}")
+async def get_case(case_id: int):
+    """获取单个案件"""
+    case = db_manager.get_case(case_id)
+    if case:
+        return case
+    return {"error": "案件不存在"}
+
+@app.get("/api/cases/search")
+async def search_cases(q: str):
+    """搜索案件"""
+    cases = db_manager.search_cases(q)
+    return {"cases": cases, "query": q}
 
 @app.get("/health")
 def health_check():
