@@ -52,28 +52,31 @@ class SRRSystemManager:
         return True
     
     def check_data_files(self):
-        """Check if required data files exist"""
-        print("📊 Checking data files...")
+        """Check if required model files exist"""
+        print("📊 Checking model files...")
         
-        data_dir = self.project_root / "data" / "depend_data"
+        models_dir = self.project_root / "models"
         required_files = [
-            "Slope data.xlsx",
-            "SRR data 2021-2024.csv",
-            "SRR rules.docx"
+            "ai_models/training_data.pkl",
+            "mapping_rules/slope_location_mapping.json",
+            "config/srr_rules.json",
+            "config/keyword_rules.json",
+            "metadata.json"
         ]
         
         missing_files = []
         for file_name in required_files:
-            file_path = data_dir / file_name
+            file_path = models_dir / file_name
             if not file_path.exists():
                 missing_files.append(file_name)
         
         if missing_files:
-            print(f"❌ Missing data files: {', '.join(missing_files)}")
-            print(f"Please ensure files are in: {data_dir}")
+            print(f"❌ Missing model files: {', '.join(missing_files)}")
+            print(f"Please ensure model files are in: {models_dir}")
+            print("💡 Run data conversion script to generate model files")
             return False
         
-        print("✅ All data files present")
+        print("✅ All model files present")
         return True
     
     def check_existing_processes(self):
