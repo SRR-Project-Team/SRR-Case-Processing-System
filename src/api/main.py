@@ -15,7 +15,7 @@ API端点：
 - POST /api/process-srr-file: 处理SRR案件文件
 - GET /health: 健康检查
 
-作者: AI Assistant
+作者: Project3 Team
 版本: 1.0
 """
 from fastapi import FastAPI, UploadFile, File
@@ -25,14 +25,16 @@ import os
 import tempfile
 
 # 导入自定义模块
+# 设置Python路径以导入项目模块
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.extractFromTxt import extract_case_data_from_txt
-from core.extractFromTMO import extract_case_data_from_pdf as extract_tmo_data
-from core.extractFromRCC import extract_case_data_from_pdf as extract_rcc_data
-from core.output import (
+# 导入核心处理模块
+from core.extractFromTxt import extract_case_data_from_txt  # TXT文件处理器
+from core.extractFromTMO import extract_case_data_from_pdf as extract_tmo_data  # TMO PDF处理器
+from core.extractFromRCC import extract_case_data_from_pdf as extract_rcc_data  # RCC PDF处理器
+from core.output import (  # 输出格式化模块
     create_structured_data, 
     create_success_result, 
     create_error_result,
@@ -40,30 +42,41 @@ from core.output import (
     get_file_type_error_message,
     ProcessingResult
 )
-from utils.smart_file_pairing import SmartFilePairing
+from utils.smart_file_pairing import SmartFilePairing  # 智能文件配对器
+
+# 设置数据库模块路径
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-from database import get_db_manager
+from database import get_db_manager  # 数据库管理器
 
-# 初始化数据库
+# 初始化数据库管理器
+# 创建全局数据库管理器实例，用于处理案件数据的存储和检索
 db_manager = get_db_manager()
 
 # 创建FastAPI应用实例
-app = FastAPI(title="SRR案件处理API（A-Q新规则）", version="1.0")
+# 配置API基本信息，包括标题和版本号
+app = FastAPI(
+    title="SRR案件处理API（A-Q新规则）", 
+    version="1.0",
+    description="智能SRR案件处理系统，支持TXT、TMO PDF、RCC PDF文件格式"
+)
 
-# 添加CORS中间件
+# 配置CORS中间件
+# 允许前端应用（React）跨域访问API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # 允许前端访问
-    allow_credentials=True,
-    allow_methods=["*"],  # 允许所有HTTP方法
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # 前端开发服务器地址
+    allow_credentials=True,  # 允许携带认证信息
+    allow_methods=["*"],  # 允许所有HTTP方法（GET、POST等）
     allow_headers=["*"],  # 允许所有请求头
 )
 
-# 创建临时目录用于存储上传的文件
+# 创建临时目录
+# 用于存储上传的文件，处理完成后自动清理
 TEMP_DIR = tempfile.mkdtemp()
+print(f"📁 临时文件目录: {TEMP_DIR}")
 
 
 def determine_file_processing_type(filename: str, content_type: str) -> str:

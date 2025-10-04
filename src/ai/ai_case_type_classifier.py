@@ -1,12 +1,45 @@
 """
-AI案件类型分类器
-基于历史数据和SRR规则智能分类案件类型 (Emergency/Urgent/General)
+AI案件类型分类器模块
+
+本模块实现基于机器学习和规则匹配的智能案件类型分类系统，能够自动将SRR案件
+分类为Emergency（紧急）、Urgent（紧急）或General（一般）三种类型。
+
+主要功能：
+1. 基于历史案件数据进行机器学习训练
+2. 结合SRR规则文档进行规则匹配
+3. 使用混合方法（ML + 规则）提高分类准确率
+4. 支持模型缓存和增量学习
+5. 提供详细的分类报告和置信度评估
+
+技术实现：
+- 机器学习：RandomForestClassifier + TF-IDF向量化
+- 规则匹配：基于关键词和语义的规则引擎
+- 数据来源：SRR历史数据 + 投诉案件数据 + SRR规则文档
+
+作者: Project3 Team
+版本: 2.0
 """
 
 import pandas as pd
 
 def load_srr_rules():
-    """加载SRR规则"""
+    """
+    加载SRR规则文档数据
+    
+    从预处理的JSON文件中加载SRR规则内容，这些规则用于规则匹配分类。
+    规则文件包含从SRR rules.docx文档中提取的关键词和分类标准。
+    
+    Returns:
+        dict: 包含规则内容的字典
+        {
+            'content': list,  # 规则文本内容列表
+            'paragraphs': int  # 段落数量
+        }
+        
+    Example:
+        >>> rules = load_srr_rules()
+        >>> print(f"加载了 {rules['paragraphs']} 个规则段落")
+    """
     import json
     import os
     
@@ -20,7 +53,21 @@ def load_srr_rules():
 
 
 def load_training_data():
-    """加载训练数据"""
+    """
+    加载机器学习训练数据
+    
+    从预处理的pickle文件中加载历史案件数据，用于训练分类模型。
+    数据包含SRR案件数据和投诉案件数据，已进行清洗和预处理。
+    
+    Returns:
+        tuple: (srr_data, complaints_data)
+            - srr_data (list): SRR案件数据列表
+            - complaints_data (list): 投诉案件数据列表
+            
+    Example:
+        >>> srr_data, complaints_data = load_training_data()
+        >>> print(f"SRR数据: {len(srr_data)}条, 投诉数据: {len(complaints_data)}条")
+    """
     import pickle
     import os
     

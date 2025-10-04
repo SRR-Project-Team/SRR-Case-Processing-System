@@ -15,7 +15,7 @@
 4. 验证文件类型和格式
 5. 格式化JSON输出
 
-作者: AI Assistant
+作者: Project3 Team
 版本: 1.0
 """
 from pydantic import BaseModel

@@ -2,7 +2,24 @@
 # -*- coding: utf-8 -*-
 """
 文件处理工具模块
-提供智能编码检测和文件读取功能
+
+本模块提供智能的文件编码检测和安全文件读取功能，专门用于处理
+各种编码格式的文本文件，特别是中文文档和邮件内容。
+
+主要功能：
+1. 智能编码检测（支持BOM、chardet、常见编码）
+2. 安全文件读取（自动编码检测 + 错误处理）
+3. 多编码格式支持（UTF-8、GBK、GB2312、Big5等）
+4. 错误恢复机制（编码失败时的降级处理）
+
+技术特点：
+- 基于chardet库的智能编码检测
+- 支持BOM标记识别
+- 多级编码尝试机制
+- 错误忽略和容错处理
+
+作者: Project3 Team
+版本: 2.0
 """
 
 import chardet
@@ -14,11 +31,20 @@ def detect_file_encoding(file_path: str) -> str:
     """
     智能检测文件编码格式
     
+    使用多级检测策略：
+    1. 检查BOM标记（UTF-8、UTF-16等）
+    2. 使用chardet库进行智能检测
+    3. 尝试常见编码格式
+    
     Args:
         file_path (str): 文件路径
         
     Returns:
-        str: 检测到的编码格式
+        str: 检测到的编码格式，默认返回'utf-8'
+        
+    Example:
+        >>> encoding = detect_file_encoding('test.txt')
+        >>> print(f"文件编码: {encoding}")
     """
     # 1. 检查BOM标记
     try:

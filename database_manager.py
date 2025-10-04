@@ -1,22 +1,56 @@
 #!/usr/bin/env python3
 """
 数据库管理工具
-提供数据库的增删改查、统计、备份等功能
+
+本工具提供SRR案件数据库的完整管理功能，包括：
+- 数据库统计和监控
+- 案件数据查询和搜索
+- 数据导入导出
+- 数据库维护和清理
+
+主要功能：
+1. 显示数据库统计信息（案件数量、文件类型分布等）
+2. 列出和搜索案件数据
+3. 导出案件数据为JSON格式
+4. 删除指定案件或清理数据库
+5. 提供交互式命令行界面
+
+使用方式：
+- python database_manager.py stats    # 显示统计信息
+- python database_manager.py list 10  # 列出最近10个案件
+- python database_manager.py search "关键词"  # 搜索案件
+- python database_manager.py export backup.json  # 导出数据
+- python database_manager.py delete 123  # 删除案件ID 123
+
+作者: Project3 Team
+版本: 2.0
 """
 import sys
 import os
 import json
 from datetime import datetime
 
-# 添加项目路径
+# 添加项目路径以导入数据库模块
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from src.database import get_db_manager
 
 class DatabaseManager:
-    """数据库管理工具类"""
+    """
+    数据库管理工具类
+    
+    提供SRR案件数据库的完整管理功能，包括统计、查询、导出等操作。
+    
+    Attributes:
+        db: 数据库管理器实例
+    """
     
     def __init__(self):
+        """
+        初始化数据库管理器
+        
+        获取数据库管理器实例，用于后续的数据库操作。
+        """
         self.db = get_db_manager()
     
     def show_stats(self):

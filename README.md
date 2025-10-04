@@ -74,7 +74,7 @@ Multi-format    TXT/TMO/RCC    Text/OCR/PDF      Case Type      A-Q Columns
 |----------|-------------|
 | [📋 WORKFLOW_DESIGN.md](WORKFLOW_DESIGN.md) | **Complete system workflow and architecture** |
 | [🗄️ Database Guide](docs/DATABASE_GUIDE.md) | **Database usage and management** |
-| [📖 docs/](docs/) | Complete documentation collection |
+| [📖 Documentation Index](docs/DOCUMENTATION_INDEX.md) | Complete documentation collection |
 | [🔌 API Documentation](docs/API_DOCUMENTATION.md) | API endpoints and usage |
 | [🚀 Deployment Guide](docs/DEPLOYMENT_GUIDE.md) | Production deployment instructions |
 
@@ -133,7 +133,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 For questions or issues:
 1. Check the [WORKFLOW_DESIGN.md](WORKFLOW_DESIGN.md) for complete system documentation
-2. Review the [docs/](docs/) directory for detailed guides
+2. Review the [Documentation Index](docs/DOCUMENTATION_INDEX.md) for detailed guides
 3. Open an [Issue](https://github.com/[USERNAME]/SRR-Case-Processing-System/issues) for bug reports or feature requests
 
 ## 📄 License

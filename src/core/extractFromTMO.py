@@ -17,7 +17,7 @@ AI增强功能：
 - 智能文本清理和错误纠正
 - 自适应格式识别
 
-作者: AI Assistant
+作者: Project3 Team
 版本: 2.0 (AI增强版)
 """
 import re

@@ -1,15 +1,45 @@
 """
-数据库模型定义
+数据库模型定义模块
+
+本模块定义SRR案件处理系统的数据库模型，使用SQLAlchemy ORM框架
+进行数据库操作。模型严格按照A-Q字段规范设计，确保数据一致性。
+
+主要功能：
+1. 定义SRR案件数据表结构
+2. 映射A-Q字段到数据库列
+3. 配置时间戳和索引
+4. 支持软删除和审计功能
+
+数据模型特点：
+- 18个A-Q字段完整映射
+- 北京时间时区支持
+- 自动时间戳管理
+- 软删除机制
+- 系统审计字段
+
+作者: Project3 Team
+版本: 2.0
 """
 from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 import pytz
 
+# 创建SQLAlchemy基础类
 Base = declarative_base()
 
 class SRRCase(Base):
-    """SRR案件数据表"""
+    """
+    SRR案件数据表模型
+    
+    映射SRR案件的所有字段到数据库表，包括：
+    - A-Q字段：18个核心业务字段
+    - 系统字段：ID、时间戳、状态等
+    - 元数据字段：文件名、文件类型、处理时间等
+    
+    表名: srr_cases
+    主键: id (自增整数)
+    """
     __tablename__ = "srr_cases"
     
     id = Column(Integer, primary_key=True, autoincrement=True)

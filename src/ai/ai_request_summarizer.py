@@ -1,8 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-AI请求摘要生成器
-专门从邮件或PDF内容中生成具体的请求摘要，而不是提取邮件的不同部分
+AI请求摘要生成器模块
+
+本模块专门用于从邮件或PDF（传真）内容中生成简洁、准确的请求摘要。
+与传统的邮件结构提取不同，本模块专注于识别和总结具体的请求内容。
+
+主要功能：
+1. 智能识别17种不同类型的请求模式
+2. 从复杂内容中提取核心请求信息
+3. 生成简洁的自然语言摘要
+4. 支持多语言内容处理（中文/英文）
+5. 提供置信度评估和内容融合
+
+技术特点：
+- 基于正则表达式的模式匹配
+- 多源内容融合算法
+- 置信度评分机制
+- 智能内容清理和格式化
+
+作者: Project3 Team
+版本: 2.0
 """
 
 import re
@@ -11,10 +29,23 @@ import os
 
 
 class AIRequestSummarizer:
-    """AI请求摘要生成器"""
+    """
+    AI请求摘要生成器
+    
+    专门用于从邮件或PDF内容中提取和总结具体的请求信息，
+    生成简洁、准确的案件请求摘要。
+    
+    Attributes:
+        request_patterns (List[Dict]): 请求识别模式列表
+        content_extractors (Dict): 内容提取器字典
+    """
     
     def __init__(self):
-        """初始化摘要生成器"""
+        """
+        初始化摘要生成器
+        
+        构建请求识别模式和内容提取器，用于后续的摘要生成。
+        """
         self.request_patterns = self._build_request_patterns()
         self.content_extractors = self._build_content_extractors()
     

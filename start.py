@@ -1,8 +1,30 @@
 #!/usr/bin/env python3
 """
-SRR Case Processing System Startup Script
+SRR案件处理系统启动脚本
 
-This script provides a convenient way to start the SRR system components.
+本脚本提供便捷的系统启动、管理和监控功能，支持：
+- 自动检测和清理现有进程
+- 一键启动前后端服务
+- 实时日志监控
+- 系统健康检查
+- 智能进程管理
+
+主要功能：
+1. 依赖检查和环境验证
+2. 进程冲突检测和清理
+3. 前后端服务启动
+4. 实时日志显示
+5. 系统状态监控
+
+使用方式：
+- python start.py start        # 启动系统
+- python start.py start --logs # 启动系统（实时日志）
+- python start.py check        # 系统检查
+- python start.py cleanup      # 清理进程
+- python start.py help         # 帮助信息
+
+作者: Project3 Team
+版本: 2.0
 """
 
 import os
@@ -14,11 +36,36 @@ import threading
 from pathlib import Path
 
 class SRRSystemManager:
-    def __init__(self):
+    """
+    SRR系统管理器
+    
+    负责管理SRR案件处理系统的启动、停止和监控。
+    支持智能进程管理、实时日志显示和系统健康检查。
+    
+    Attributes:
+        project_root (Path): 项目根目录路径
+        backend_process (subprocess.Popen): 后端进程对象
+        frontend_process (subprocess.Popen): 前端进程对象
+        running (bool): 系统运行状态
+        show_logs (bool): 是否显示实时日志
+        log_thread (threading.Thread): 后端日志监控线程
+        frontend_log_thread (threading.Thread): 前端日志监控线程
+    """
+    
+    def __init__(self, show_logs=False):
+        """
+        初始化系统管理器
+        
+        Args:
+            show_logs (bool): 是否显示实时日志，默认为False
+        """
         self.project_root = Path(__file__).parent
         self.backend_process = None
         self.frontend_process = None
         self.running = False
+        self.show_logs = show_logs  # 日志显示选项
+        self.log_thread = None      # 后端日志监控线程
+        self.frontend_log_thread = None  # 前端日志监控线程
         
     def check_dependencies(self):
         """Check if required dependencies are installed"""
@@ -241,14 +288,28 @@ class SRRSystemManager:
             
         try:
             os.chdir(backend_dir)
-            self.backend_process = subprocess.Popen([
-                sys.executable, "main.py"
-            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            
+            if self.show_logs:
+                # 显示日志模式：不使用PIPE，让日志直接输出
+                self.backend_process = subprocess.Popen([
+                    sys.executable, "main.py"
+                ])
+                print("📋 Backend logs will be displayed in real-time")
+            else:
+                # 静默模式：使用PIPE重定向日志
+                self.backend_process = subprocess.Popen([
+                    sys.executable, "main.py"
+                ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             
             # Wait a moment to check if process started successfully
             time.sleep(3)
             if self.backend_process.poll() is None:
                 print("✅ Backend server started on http://localhost:8001")
+                
+                if not self.show_logs:
+                    # 启动日志监控线程
+                    self.start_log_monitoring()
+                
                 return True
             else:
                 stdout, stderr = self.backend_process.communicate()
@@ -262,6 +323,60 @@ class SRRSystemManager:
             return False
         finally:
             os.chdir(self.project_root)
+    
+    def start_log_monitoring(self):
+        """Start monitoring backend logs"""
+        if self.show_logs or not self.backend_process:
+            return
+        
+        def monitor_logs():
+            """Monitor backend process logs"""
+            try:
+                while self.running and self.backend_process:
+                    # 读取后端进程的输出
+                    if self.backend_process.stdout:
+                        line = self.backend_process.stdout.readline()
+                        if line:
+                            print(f"[BACKEND] {line.decode().strip()}")
+                    
+                    if self.backend_process.stderr:
+                        line = self.backend_process.stderr.readline()
+                        if line:
+                            print(f"[BACKEND ERROR] {line.decode().strip()}")
+                    
+                    time.sleep(0.1)
+            except Exception as e:
+                print(f"Log monitoring error: {e}")
+        
+        self.log_thread = threading.Thread(target=monitor_logs, daemon=True)
+        self.log_thread.start()
+    
+    def start_frontend_log_monitoring(self):
+        """Start monitoring frontend logs"""
+        if self.show_logs or not self.frontend_process:
+            return
+        
+        def monitor_frontend_logs():
+            """Monitor frontend process logs"""
+            try:
+                while self.running and self.frontend_process:
+                    # 读取前端进程的输出
+                    if self.frontend_process.stdout:
+                        line = self.frontend_process.stdout.readline()
+                        if line:
+                            print(f"[FRONTEND] {line.decode().strip()}")
+                    
+                    if self.frontend_process.stderr:
+                        line = self.frontend_process.stderr.readline()
+                        if line:
+                            print(f"[FRONTEND ERROR] {line.decode().strip()}")
+                    
+                    time.sleep(0.1)
+            except Exception as e:
+                print(f"Frontend log monitoring error: {e}")
+        
+        self.frontend_log_thread = threading.Thread(target=monitor_frontend_logs, daemon=True)
+        self.frontend_log_thread.start()
     
     def start_frontend(self):
         """Start the React frontend server"""
@@ -292,9 +407,18 @@ class SRRSystemManager:
         
         try:
             os.chdir(frontend_dir)
-            self.frontend_process = subprocess.Popen([
-                'npm', 'start'
-            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            
+            if self.show_logs:
+                # 显示日志模式：不使用PIPE，让日志直接输出
+                self.frontend_process = subprocess.Popen([
+                    'npm', 'start'
+                ])
+                print("📋 Frontend logs will be displayed in real-time")
+            else:
+                # 静默模式：使用PIPE重定向日志
+                self.frontend_process = subprocess.Popen([
+                    'npm', 'start'
+                ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             
             # Wait for frontend to start
             print("⏳ Waiting for frontend to start...")
@@ -302,6 +426,11 @@ class SRRSystemManager:
             
             if self.frontend_process.poll() is None:
                 print("✅ Frontend server started on http://localhost:3000")
+                
+                if not self.show_logs:
+                    # 启动前端日志监控线程
+                    self.start_frontend_log_monitoring()
+                
                 return True
             else:
                 stdout, stderr = self.frontend_process.communicate()
@@ -440,12 +569,19 @@ class SRRSystemManager:
 
 def main():
     """Main entry point"""
-    manager = SRRSystemManager()
+    # 检查是否有 --logs 参数
+    show_logs = "--logs" in sys.argv
+    manager = SRRSystemManager(show_logs=show_logs)
     
     if len(sys.argv) > 1:
         command = sys.argv[1].lower()
         
-        if command == "check":
+        if command == "start":
+            # 启动系统
+            success = manager.start_system()
+            return 0 if success else 1
+        
+        elif command == "check":
             print("🔍 Running system checks...")
             deps_ok = manager.check_dependencies()
             data_ok = manager.check_data_files()
@@ -479,10 +615,19 @@ def main():
         elif command == "help":
             print("SRR System Manager")
             print("Usage:")
-            print("  python start.py         - Start the complete system")
-            print("  python start.py check   - Run system checks only")
-            print("  python start.py cleanup - Clean up existing processes")
-            print("  python start.py help    - Show this help message")
+            print("  python start.py start        - Start the complete system")
+            print("  python start.py start --logs - Start system with real-time logs")
+            print("  python start.py check        - Run system checks only")
+            print("  python start.py cleanup      - Clean up existing processes")
+            print("  python start.py help         - Show this help message")
+            print("")
+            print("Examples:")
+            print("  python start.py start --logs  # Start with real-time logs (recommended for development)")
+            print("  python start.py start         # Start silently")
+            print("")
+            print("Log modes:")
+            print("  --logs: Show real-time backend and frontend logs")
+            print("  default: Show logs in background with [BACKEND]/[FRONTEND] prefixes")
             return 0
         
         else:

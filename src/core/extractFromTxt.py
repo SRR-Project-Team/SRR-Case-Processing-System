@@ -16,7 +16,7 @@
 5. 生成案件摘要和详情
 6. AI增强文本处理和OCR能力
 
-作者: AI Assistant
+作者: Project3 Team
 版本: 2.0 (AI增强版)
 """
 import re

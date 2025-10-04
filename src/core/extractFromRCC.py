@@ -11,7 +11,7 @@ RCC PDF文件结构特点：
 - 来源信息 对应 B_source
 - 联系信息 对应 E_caller_name, F_contact_no
 
-作者: AI Assistant
+作者: Project3 Team
 版本: 1.0
 """
 import re
