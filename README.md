@@ -35,14 +35,14 @@ python start.py
 - **Batch Processing**: Handle multiple files simultaneously
 - **Web Interface**: Modern chatbot-style interface
 
-## 🖥️ Web界面展示
+## 🖥️ Web Interface Display
 
-### 📸 界面截图
+### 📸 Interface Screenshot
 
-#### 🏠 主界面
+#### 🏠 Main Interface
 ![🏗️ SRR](images/main_interface.png)
 
-#### 📈 交互展示
+#### 📈 Interactive Display
 ![🏗️ SRR](images/interact_display.png)
 
 ## 📁 Project Structure
