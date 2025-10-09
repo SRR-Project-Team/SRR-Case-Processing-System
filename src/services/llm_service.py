@@ -41,7 +41,7 @@ class LLMService:
                 self.logger.error(f"❌ 火山引擎LLM客户端初始化失败: {e}")
                 self.client = None
     
-    def summarize_text(self, text: str, max_length: int = 200) -> Optional[str]:
+    def summarize_text(self, text: str, max_length: int = 600) -> Optional[str]:
         """
         使用大模型API对文本进行一句话总结
         
@@ -59,8 +59,10 @@ class LLMService:
                 return None
             
             # 构建请求消息
-            message = f'''Summarize the content of the following text in one sentence, 
-           and no more than {max_length} characters.:\n\n{text[:3000]} '''  # 限制文本长度
+            message = f'''Summarize the text with key elements(case type, caller name and etc) in a natural and fluent sentence. 
+            In addition, the summary should include the short answer of the duration of the case open up to end date or now, 
+            the number of departments it has been handled by, and whether it falls under the responsibility of the slope and tree maintenance department.
+            No more than {max_length} words.:\n\n{text[:9000]} '''  # 限制文本长度
             
             # 调用火山引擎API
             response = self.client.chat.completions.create(
