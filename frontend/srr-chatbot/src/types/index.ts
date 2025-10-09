@@ -12,6 +12,7 @@ export interface FileInfo {
   name: string;
   size: number;
   type: string;
+  summary?: FileSummary;  // 新增总结字段
 }
 
 // 提取的案件数据
@@ -36,6 +37,15 @@ export interface ExtractedData {
   Q_case_details: string;
 }
 
+// 添加总结相关类型
+export interface FileSummary {
+  success: boolean;
+  summary?: string;
+  filename?: string;
+  source?: string;
+  error?: string;
+}
+
 // API响应类型
 export interface ApiResponse {
   filename: string;
@@ -43,6 +53,7 @@ export interface ApiResponse {
   message: string;
   data?: ExtractedData;
   error?: string;
+  summary?: FileSummary;  // 新增总结字段
 }
 
 // 聊天状态

@@ -566,7 +566,7 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
     result['E_caller_name'], result['F_contact_no'] = extract_inspection_officers(content)
     
     # G: 斜坡编号 (从Form 2 ref. no.中提取并转换格式)
-    # 根据用户要求，从Form 2 ref. no.中提取斜坡编号
+    # 从Form 2 ref. no.中提取斜坡编号
     # 例如：11SWB/F199 -> 11SW-B/F199
     result['G_slope_no'] = extract_slope_no_from_form_ref(content)
     

@@ -19,7 +19,7 @@ API端点：
 版本: 1.0
 """
 from fastapi import FastAPI, UploadFile, File
-from typing import List
+from typing import List, Dict, Any
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import tempfile
@@ -43,6 +43,7 @@ from core.output import (  # 输出格式化模块
     ProcessingResult
 )
 from utils.smart_file_pairing import SmartFilePairing  # 智能文件配对器
+from utils.file_utils import read_file_with_encoding
 
 # 设置数据库模块路径
 import sys
@@ -54,6 +55,13 @@ from database import get_db_manager  # 数据库管理器
 # 初始化数据库管理器
 # 创建全局数据库管理器实例，用于处理案件数据的存储和检索
 db_manager = get_db_manager()
+
+# 导入大模型服务
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+from src.services.llm_service import get_llm_service
+from config.settings import LLM_API_KEY
 
 # 创建FastAPI应用实例
 # 配置API基本信息，包括标题和版本号
@@ -72,6 +80,14 @@ app.add_middleware(
     allow_methods=["*"],  # 允许所有HTTP方法（GET、POST等）
     allow_headers=["*"],  # 允许所有请求头
 )
+
+# 在应用启动时初始化大模型服务
+@app.on_event("startup")
+async def startup_event():
+    """应用启动事件"""
+    # 初始化大模型服务
+    from src.services.llm_service import init_llm_service
+    init_llm_service(LLM_API_KEY)
 
 # 创建临时目录
 # 用于存储上传的文件，处理完成后自动清理
@@ -158,7 +174,50 @@ async def process_paired_txt_file(main_file_path: str, email_file_path: str = No
         return extract_case_data_from_txt(main_file_path)
 
 
-
+# 添加总结功能函数
+async def generate_file_summary(file_content: str, filename: str, file_path: str = None) -> Dict[str, Any]:
+    """
+    生成文件内容总结
+    
+    Args:
+        file_content: 文件内容
+        filename: 文件名
+        file_path: 文件路径（可选，用于直接文件处理）
+        
+    Returns:
+        包含总结结果的字典
+    """
+    try:
+        # 获取大模型服务
+        llm = get_llm_service()
+        
+        # 优先使用文件路径进行总结（支持PDF等复杂文件）
+        if file_path:
+            summary = llm.summarize_file(file_path, max_length=150)
+        else:
+            # 使用文本内容进行总结
+            summary = llm.summarize_text(file_content, max_length=150)
+        
+        if summary:
+            return {
+                "success": True,
+                "summary": summary,
+                "filename": filename,
+                "source": "AI Summary"
+            }
+        else:
+            return {
+                "success": False,
+                "error": "总结生成失败",
+                "filename": filename
+            }
+            
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"总结处理异常: {str(e)}",
+            "filename": filename
+        }
 
 @app.post("/api/process-srr-file", response_model=ProcessingResult)
 async def process_srr_file(file: UploadFile = File(...)):
@@ -272,8 +331,23 @@ async def process_srr_file(file: UploadFile = File(...)):
         except Exception as db_error:
             print(f"⚠️ 数据库保存失败: {db_error}")
 
+        # read file content for summary
+        try:
+            file_content = read_file_with_encoding(file_path)
+            
+            # generate AI summary (传入文件路径以支持PDF等复杂文件)
+            summary_result = await generate_file_summary(file_content, file.filename, file_path)
+            
+        except Exception as e:
+            # summary failed independent of main functionality
+            summary_result = {
+                "success": False,
+                "error": f"总结生成失败: {str(e)}"
+            }
+
         # 返回成功结果
-        return create_success_result(file.filename, structured_data)
+        return create_success_result(file.filename, structured_data, summary_result)
+        
         
     except Exception as e:
         # 捕获所有异常并返回错误结果
@@ -478,6 +552,7 @@ async def process_multiple_files(files: List[UploadFile] = File(...)):
         "skipped": skipped_count,
         "results": results
     }
+
 
 # 案件管理
 @app.get("/api/cases")

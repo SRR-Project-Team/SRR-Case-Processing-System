@@ -111,9 +111,9 @@ Process Flow:
 - **Training Data**: Historical cases from Excel files
 
 #### 3.3 Request Summarization
-- **Approach**: Pattern Recognition + NLP
+- **Approach**: Doubao API (Volcengine) + Pattern Recognition
 - **Input**: Email content or PDF text
-- **Output**: Concise one-sentence summary
+- **Output**: Concise one-sentence summary (max 200 characters)
 
 #### 3.4 Location Mapping
 - **Data Source**: Slope data Excel file (1903 records)
@@ -239,16 +239,17 @@ React Application
 ### Environment Variables
 ```python
 API_HOST = "localhost"
-API_PORT = 8000
+API_PORT = 8001  # Updated port
 FRONTEND_PORT = 3000
 MODEL_CACHE_TIMEOUT = 1800  # 30 minutes
 OCR_TIMEOUT = 120  # 2 minutes
+ARK_API_KEY = "doubao_api_key"  # Volcengine API key
 ```
 
 ### Data Dependencies
-- **depend_data/Slope data.xlsx**: Location mappings
-- **depend_data/SRR data 2021-2024.csv**: Historical training data
-- **depend_data/SRR rules.docx**: Classification rules
+- **models/mapping_rules/slope_location_mapping.json**: Cached location mappings
+- **models/ai_models/training_data.pkl**: Cached training data
+- **models/config/srr_rules.json**: Cached classification rules
 
 ## 📈 Monitoring and Analytics
 

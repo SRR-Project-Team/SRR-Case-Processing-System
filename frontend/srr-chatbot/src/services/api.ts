@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { ApiResponse, QueryRequest } from '../types';
 
-// 批量处理响应类型
+// Batch processing response type
 export interface BatchProcessingResponse {
   total_files: number;
   successful: number;
@@ -14,18 +14,18 @@ export interface BatchProcessingResponse {
   }>;
 }
 
-// API基础配置
+// API base configuration
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 120000, // 120秒超时 (2分钟) - 为RCC OCR处理预留更多时间
+  timeout: 120000, // 120 seconds timeout (2 minutes) - reserved for RCC OCR processing
   headers: {
     'Content-Type': 'multipart/form-data',
   },
 });
 
-// 单文件处理API
+// Single file processing API
 export const processFile = async (file: File): Promise<ApiResponse> => {
   try {
     const formData = new FormData();
@@ -33,29 +33,30 @@ export const processFile = async (file: File): Promise<ApiResponse> => {
 
     const response = await apiClient.post('/api/process-srr-file', formData);
     
-    // 转换后端响应格式到前端期望格式
+    // Convert backend response format to frontend expected format
     const backendResponse = response.data;
     return {
       filename: backendResponse.filename,
       status: backendResponse.status,
       message: backendResponse.message,
-      data: backendResponse.structured_data, // 将 structured_data 映射到 data
+      data: backendResponse.structured_data, // Map structured_data to data
       error: backendResponse.error,
+      summary: backendResponse.summary
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(error.response?.data?.message || error.message || '文件处理失败');
+      throw new Error(error.response?.data?.message || error.message || 'File processing failed');
     }
-    throw new Error('网络连接失败');
+    throw new Error('Network connection failed');
   }
 };
 
-// 多文件批量处理API
+// Multi-file batch processing API
 export const processMultipleFiles = async (files: File[]): Promise<BatchProcessingResponse> => {
   try {
     const formData = new FormData();
     
-    // 添加所有文件到FormData
+    // Add all files to FormData
     files.forEach((file) => {
       formData.append('files', file);
     });
@@ -65,67 +66,67 @@ export const processMultipleFiles = async (files: File[]): Promise<BatchProcessi
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(error.response?.data?.message || error.message || '批量文件处理失败');
+      throw new Error(error.response?.data?.message || error.message || 'Batch file processing failed');
     }
-    throw new Error('网络连接失败');
+    throw new Error('Network connection failed');
   }
 };
 
-// 健康检查API
+// Health check API
 export const healthCheck = async (): Promise<{ status: string; message: string }> => {
   try {
     const response = await apiClient.get('/health');
     return response.data;
   } catch (error) {
-    throw new Error('API服务不可用');
+    throw new Error('API service unavailable');
   }
 };
 
-// 查询案件信息API (模拟实现)
+// Query case information API (simulated implementation)
 export const queryCase = async (request: QueryRequest): Promise<string> => {
   try {
-    // 这里可以实现实际的查询逻辑
-    // 目前返回模拟响应
+    // Here you can implement actual query logic
+    // Currently returns simulated response
     const { query, context } = request;
     
     if (!context) {
-      return '请先上传文件以获取案件信息。';
+      return 'Please upload files first to get case information.';
     }
 
-    // 简单的查询匹配逻辑
+    // Simple query matching logic
     const lowerQuery = query.toLowerCase();
     
-    if (lowerQuery.includes('案件') || lowerQuery.includes('case')) {
-      return `案件编号: ${context.C_case_number || '未知'}\n来源: ${context.B_source || '未知'}`;
+    if (lowerQuery.includes('case') || lowerQuery.includes('案件')) {
+      return `Case Number: ${context.C_case_number || 'Unknown'}\nSource: ${context.B_source || 'Unknown'}`;
     }
     
-    if (lowerQuery.includes('日期') || lowerQuery.includes('date')) {
-      return `接收日期: ${context.A_date_received || '未知'}\n10天规则截止日期: ${context.K_10day_rule_due_date || '未知'}`;
+    if (lowerQuery.includes('date') || lowerQuery.includes('日期')) {
+      return `Date Received: ${context.A_date_received || 'Unknown'}\n10-Day Rule Due Date: ${context.K_10day_rule_due_date || 'Unknown'}`;
     }
     
-    if (lowerQuery.includes('联系') || lowerQuery.includes('contact')) {
-      return `来电人: ${context.E_caller_name || '未知'}\n联系电话: ${context.F_contact_no || '未知'}`;
+    if (lowerQuery.includes('contact') || lowerQuery.includes('联系')) {
+      return `Caller: ${context.E_caller_name || 'Unknown'}\nContact Number: ${context.F_contact_no || 'Unknown'}`;
     }
     
-    if (lowerQuery.includes('斜坡') || lowerQuery.includes('slope')) {
-      return `斜坡编号: ${context.G_slope_no || '未知'}\n位置: ${context.H_location || '未知'}`;
+    if (lowerQuery.includes('slope') || lowerQuery.includes('斜坡')) {
+      return `Slope Number: ${context.G_slope_no || 'Unknown'}\nLocation: ${context.H_location || 'Unknown'}`;
     }
     
-    if (lowerQuery.includes('性质') || lowerQuery.includes('nature')) {
-      return `请求性质: ${context.I_nature_of_request || '未知'}`;
+    if (lowerQuery.includes('nature') || lowerQuery.includes('性质')) {
+      return `Nature of Request: ${context.I_nature_of_request || 'Unknown'}`;
     }
     
-    // 默认返回案件概要
-    return `案件概要:
-• 案件编号: ${context.C_case_number || '未知'}
-• 来源: ${context.B_source || '未知'}
-• 接收日期: ${context.A_date_received || '未知'}
-• 来电人: ${context.E_caller_name || '未知'}
-• 斜坡编号: ${context.G_slope_no || '未知'}
-• 请求性质: ${context.I_nature_of_request || '未知'}`;
+    // Default return case summary
+    return `Case Summary:
+• Case Number: ${context.C_case_number || 'Unknown'}
+• Source: ${context.B_source || 'Unknown'}
+• Date Received: ${context.A_date_received || 'Unknown'}
+• Caller: ${context.E_caller_name || 'Unknown'}
+• Slope Number: ${context.G_slope_no || 'Unknown'}
+• Nature of Request: ${context.I_nature_of_request || 'Unknown'}`;
     
   } catch (error) {
-    throw new Error('查询失败，请稍后重试');
+    throw new Error('Query failed, please try again later');
   }
 };
 
