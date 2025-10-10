@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useDropzone } from 'react-dropzone';
 import { Send, Upload, FileText, Bot, User } from 'lucide-react';
 import { Message, ChatState, FileSummary } from '../types';
 import { processFile, processMultipleFiles, queryCase, BatchProcessingResponse } from '../services/api';
-import ExtractedInfoDisplay from './ExtractedInfoDisplay';
 import logoImage from '../images/system_logo.png'; 
-import universityLogo from '../images/university_logo.png'; 
+import universityLogo from '../images/university_logo.png';
+import FileUploadModal from './FileUploadModal';
+import FileInfoModal from './FileInfoModal'; 
 
 const ChatbotInterface: React.FC = () => {
   const [chatState, setChatState] = useState<ChatState>({
@@ -25,8 +25,9 @@ const ChatbotInterface: React.FC = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  // 在组件状态中添加总结相关状态
   const [summaryResult, setSummaryResult] = useState<FileSummary | null>(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isFileInfoModalOpen, setIsFileInfoModalOpen] = useState(false);
 
 
   // Auto scroll to latest message
@@ -102,25 +103,36 @@ const ChatbotInterface: React.FC = () => {
     
     setSelectedFiles(prev => [...prev, ...newFiles]);
     
-    // Display file selection message
+    // Display file selection message in chat
     if (newFiles.length === 1) {
-      addMessage('user', `Add file: ${newFiles[0].name}`, {
+      addMessage('user', `📁 Added file: ${newFiles[0].name}`, {
         name: newFiles[0].name,
         size: newFiles[0].size,
         type: newFiles[0].type,
       });
     } else {
       const fileNames = newFiles.map(f => f.name).join(', ');
-      addMessage('user', `Add ${newFiles.length} files: ${fileNames}`);
+      addMessage('user', `📁 Added ${newFiles.length} files: ${fileNames}`);
     }
     
     // Display current total file count
     const totalFiles = selectedFiles.length + newFiles.length;
-    if (totalFiles === 1) {
-      addMessage('bot', 'File added to list, click "Start Processing" button to process the file.');
+    addMessage('bot', `✅ Files added successfully! Total: ${totalFiles} file${totalFiles > 1 ? 's' : ''}.\n\nClick the "📁 Upload Files" button to view and manage your files, or click "Process Files" to start processing.`);
+  };
+
+  const handleRemoveFile = (index: number) => {
+    const newFiles = selectedFiles.filter((_, i) => i !== index);
+    setSelectedFiles(newFiles);
+    if (newFiles.length === 0) {
+      addMessage('bot', 'All files removed from selection.');
     } else {
-      addMessage('bot', `Currently have ${totalFiles} files, click "Start Batch Processing" button to process all files.`);
+      addMessage('bot', `File removed. ${newFiles.length} file${newFiles.length > 1 ? 's' : ''} remaining.`);
     }
+  };
+
+  const handleClearAllFiles = () => {
+    setSelectedFiles([]);
+    addMessage('bot', 'All files cleared from selection.');
   };
 
   // Handle file upload (actual processing of selected files)
@@ -167,15 +179,36 @@ const ChatbotInterface: React.FC = () => {
             extractedData: result.data!,
           }));
 
-          addMessage('bot', `File processing successful! I have extracted the case information. You can view detailed information on the right side, or ask me any questions about this case.
+          // Display extracted case data in chat
+          const caseData = result.data;
+          addMessage('bot', `✅ **File Processing Successful!**
 
-For example, you can ask:
+📋 **Extracted Case Information:**
+
+📅 **Date Received:** ${caseData.A_date_received || 'N/A'}
+📋 **Source:** ${caseData.B_source || 'N/A'}
+🔢 **Case Number:** ${caseData.C_case_number || 'N/A'}
+⚡ **Type:** ${caseData.D_type || 'N/A'}
+👤 **Caller:** ${caseData.E_caller_name || 'N/A'}
+📞 **Contact:** ${caseData.F_contact_no || 'N/A'}
+🏗️ **Slope Number:** ${caseData.G_slope_no || 'N/A'}
+📍 **Location:** ${caseData.H_location || 'N/A'}
+📝 **Nature of Request:** ${caseData.I_nature_of_request || 'N/A'}
+🏷️ **Subject Matter:** ${caseData.J_subject_matter || 'N/A'}
+⏰ **10-day Due:** ${caseData.K_10day_rule_due_date || 'N/A'}
+⏰ **ICC Interim Due:** ${caseData.L_icc_interim_due || 'N/A'}
+⏰ **ICC Final Due:** ${caseData.M_icc_final_due || 'N/A'}
+
+💬 **You can now ask me questions about this case, such as:**
 • "What is the basic information of this case?"
 • "Contact information"
 • "Slope-related information"
 • "Important dates"
-• "Nature of the case"`);
+• "Nature of the case"
+
+📊 Click "View Details" to see complete file information and processing status.`);
           
+
           // display AI summary
         if (result.summary) {
           setSummaryResult(result.summary);
@@ -308,16 +341,7 @@ ${failedFiles.map(f => `• ${f.filename}: ${f.message}`).join('\n')}`;
     }
   };
 
-  // Drag and drop upload configuration (supports multiple files)
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: handleFileSelection,
-    accept: {
-      'text/plain': ['.txt'],
-      'application/pdf': ['.pdf'],
-    },
-    maxFiles: 10, // Support up to 10 files
-    multiple: true, // Support multiple file selection
-  });
+  // Note: Drag and drop functionality is now handled in FileUploadModal component
 
   // Handle keyboard events
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -329,135 +353,8 @@ ${failedFiles.map(f => `• ${f.filename}: ${f.message}`).join('\n')}`;
 
   return (
     <div className="chatbot-container">
-
-      {/* Left information display area */}
-      <div className="info-section">
-        <div className="info-header">
-          <h2>File Processing</h2>
-          <p>Drag or click to upload PDF/TXT files (supports multiple files)</p>
-        </div>
-
-        <div className="info-content">
-          {/* File upload area */}
-          <div {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''}`}>
-            <input {...getInputProps()} />
-            <div className="dropzone-content">
-              <Upload size={32} className="dropzone-icon" />
-              <div className="dropzone-text">
-                {isDragActive ? (
-                  <span>Drop files to add to list</span>
-                ) : (
-                  <>
-                    <strong>Click or drag files here to add</strong>
-                    <br />
-                    Supports PDF and TXT formats (can add files multiple times)
-                    <br />
-                    <small>Maximum file size: 10MB, up to 10 files</small>
-                    <br />
-                    <small style={{color: '#666', marginTop: '5px'}}>You can select files multiple times to accumulate in the list, then click "Start Processing"</small>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Selected files list and confirmation button */}
-          {selectedFiles.length > 0 && (
-            <div className="selected-files-section">
-              <h3>
-                <FileText size={16} />
-                Selected Files ({selectedFiles.length})
-              </h3>
-              <div className="selected-files-list">
-                {selectedFiles.map((file, index) => (
-                  <div key={index} className="selected-file-item">
-                    <div className="file-info">
-                      <div className="file-name">{file.name}</div>
-                      <div className="file-details">
-                        {(file.size / 1024).toFixed(1)} KB • {file.type}
-                      </div>
-                    </div>
-                    <button 
-                      className="remove-file-btn"
-                      onClick={() => {
-                        const newFiles = selectedFiles.filter((_, i) => i !== index);
-                        setSelectedFiles(newFiles);
-                        if (newFiles.length === 0) {
-                          addMessage('bot', 'File selection cleared.');
-                        }
-                      }}
-                      disabled={chatState.isLoading}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="file-actions">
-                <button 
-                  className="process-files-btn"
-                  onClick={handleFileUpload}
-                  disabled={chatState.isLoading}
-                >
-                  {chatState.isLoading ? 'Processing...' : 
-                    selectedFiles.length === 1 ? 'Start Processing' : `Start Batch Processing (${selectedFiles.length} files)`
-                  }
-                </button>
-                <button 
-                  className="clear-files-btn"
-                  onClick={() => {
-                    setSelectedFiles([]);
-                    addMessage('bot', 'File selection cleared.');
-                  }}
-                  disabled={chatState.isLoading}
-                >
-                  Clear Selection
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Current file information */}
-          {chatState.currentFile && (
-            <div className="extracted-info">
-              <h3>
-                <FileText size={16} />
-                Current File
-              </h3>
-              <div className="info-item">
-                <div className="info-label">File Name</div>
-                <div className="info-value">{chatState.currentFile.name}</div>
-              </div>
-              <div className="info-item">
-                <div className="info-label">Size</div>
-                <div className="info-value">
-                  {(chatState.currentFile.size / 1024).toFixed(1)} KB
-                </div>
-              </div>
-              <div className="info-item">
-                <div className="info-label">Type</div>
-                <div className="info-value">{chatState.currentFile.type}</div>
-              </div>
-            </div>
-          )}
-
-          {/* Extracted information display */}
-          {chatState.extractedData && (
-            <ExtractedInfoDisplay data={chatState.extractedData} />
-          )}
-
-          {/* Status prompt */}
-          {chatState.isLoading && (
-            <div className="loading">
-              <div className="loading-spinner"></div>
-              Processing file...
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Right chat area */}
-      <div className="chat-section">
+      {/* Single integrated chat area */}
+      <div className="chat-section-full">
         <div className="chat-header">
           <div className="header-content">
             <img src={universityLogo} alt="SRR Logo" className="header-logo" />
@@ -524,19 +421,93 @@ ${failedFiles.map(f => `• ${f.filename}: ${f.message}`).join('\n')}`;
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder={chatState.extractedData ? "Ask questions about the case..." : "Please upload files first..."}
+              placeholder={
+                chatState.isLoading 
+                  ? "Processing..." 
+                  : selectedFiles.length > 0 && !chatState.extractedData
+                    ? "Click 'Process Files' to start processing or ask questions..."
+                    : chatState.extractedData 
+                      ? "Ask questions about the case..." 
+                      : "Type your message or upload files to get started..."
+              }
               disabled={chatState.isLoading}
             />
-            <button
-              className="send-button"
-              onClick={handleQuery}
-              disabled={!inputMessage.trim() || chatState.isLoading}
-            >
-              <Send size={18} />
-            </button>
+            
+            <div className="input-actions">
+              {/* File Upload Button */}
+              <button
+                className="action-button upload-button"
+                onClick={() => setIsUploadModalOpen(true)}
+                disabled={chatState.isLoading}
+                title="Upload files"
+              >
+                <Upload size={18} />
+              </button>
+
+              {/* Process Files Button (shown when files are selected but not processed) */}
+              {selectedFiles.length > 0 && !chatState.extractedData && (
+                <button
+                  className="action-button process-button"
+                  onClick={handleFileUpload}
+                  disabled={chatState.isLoading}
+                  title="Process selected files"
+                >
+                  {chatState.isLoading ? (
+                    <div className="loading-spinner-small"></div>
+                  ) : (
+                    <>
+                      <Upload size={18} />
+                      Process
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* View Details Button (shown when data is extracted) */}
+              {chatState.extractedData && (
+                <button
+                  className="action-button details-button"
+                  onClick={() => setIsFileInfoModalOpen(true)}
+                  title="View file details"
+                >
+                  <FileText size={18} />
+                </button>
+              )}
+
+              {/* Send Button */}
+              <button
+                className="action-button send-button"
+                onClick={handleQuery}
+                disabled={!inputMessage.trim() || chatState.isLoading}
+                title="Send message"
+              >
+                <Send size={18} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* File Upload Modal */}
+      <FileUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onFilesSelected={handleFileSelection}
+        selectedFiles={selectedFiles}
+        onRemoveFile={handleRemoveFile}
+        onClearAll={handleClearAllFiles}
+        onProcessFiles={handleFileUpload}
+        isLoading={chatState.isLoading}
+      />
+
+      {/* File Info Modal */}
+      <FileInfoModal
+        isOpen={isFileInfoModalOpen}
+        onClose={() => setIsFileInfoModalOpen(false)}
+        fileInfo={chatState.currentFile}
+        extractedData={chatState.extractedData}
+        summaryResult={summaryResult}
+      />
     </div>
   );
 };

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-AI主题分类器 - J_subject_matter字段智能分类
-基于历史数据和规则进行智能分类，支持17个预定义类别
+AI主题classify器 - J_subject_matterfield智能classify
+基于历史data和规则进行智能classify，支持17个预定义class别
 """
 
 import pandas as pd
@@ -22,7 +22,7 @@ def load_srr_rules():
 
 
 def load_training_data():
-    """加载训练数据"""
+    """加载trainingdata"""
     import pickle
     import os
     
@@ -32,7 +32,7 @@ def load_training_data():
             data = pickle.load(f)
         return data.get('srr_data', []), data.get('complaints_data', [])
     else:
-        print("⚠️ 训练数据文件不存在")
+        print("⚠️ trainingdata文件不存在")
         return [], []
 
 import re
@@ -52,7 +52,7 @@ from utils.file_utils import read_file_with_encoding
 from .ai_model_cache import get_cached_model, cache_model
 
 
-# 预定义的主题类别映射
+# 预定义的主题class别map
 SUBJECT_MATTER_CATEGORIES = {
     0: "Endangered Tree",
     1: "Drainage Blockage", 
@@ -74,37 +74,37 @@ SUBJECT_MATTER_CATEGORIES = {
     17: "Reminder for outstanding works"
 }
 
-# 反向映射
+# 反向map
 CATEGORY_TO_ID = {v: k for k, v in SUBJECT_MATTER_CATEGORIES.items()}
 
 
 def load_historical_subject_data(data_path: str) -> pd.DataFrame:
     """
-    加载历史主题分类数据
+    加载历史主题classifydata
     
     Args:
-        data_path: 数据文件路径
+        data_path: datafile path
         
     Returns:
-        pd.DataFrame: 清洗后的历史数据
+        pd.DataFrame: 清洗后的历史data
     """
     try:
-        print(f"📊 加载历史主题数据: {data_path}")
+        print(f"📊 加载历史主题data: {data_path}")
         
         if data_path.endswith('.csv'):
-            # 读取CSV文件
+            # readCSVfile
             csv_content = read_file_with_encoding(data_path)
             with open('temp_subject_data.csv', 'w', encoding='utf-8') as f:
                 f.write(csv_content)
             df = pd.read_csv('temp_subject_data.csv')
             os.remove('temp_subject_data.csv')
         else:
-            # 读取Excel文件
+            # readExcelfile
             df = pd.read_excel(data_path, usecols='A:AZ')
         
-        print(f"✅ 原始数据加载成功: {len(df)} 条记录")
+        print(f"✅ 原始data加载success: {len(df)} 条record")
         
-        # 查找相关列
+        # find相关列
         nature_col = None
         aims_col = None
         
@@ -115,13 +115,13 @@ def load_historical_subject_data(data_path: str) -> pd.DataFrame:
                 aims_col = col
         
         if not nature_col and not aims_col:
-            print("⚠️ 未找到主题相关列，使用默认数据")
+            print("⚠️ 未找到主题相关列，使用默认data")
             return pd.DataFrame()
         
-        # 清洗数据
+        # 清洗data
         cleaned_data = []
         
-        # 使用AIMS Complaint Type作为主要数据源
+        # 使用AIMS Complaint Type作为maindata源
         if aims_col:
             aims_data = df[aims_col].dropna()
             for complaint_type in aims_data:
@@ -131,7 +131,7 @@ def load_historical_subject_data(data_path: str) -> pd.DataFrame:
                         'source': 'AIMS'
                     })
         
-        # 补充Nature of complaint数据
+        # 补充Nature of complaintdata
         if nature_col:
             nature_data = df[nature_col].dropna()
             for nature in nature_data:
@@ -142,21 +142,21 @@ def load_historical_subject_data(data_path: str) -> pd.DataFrame:
                     })
         
         result_df = pd.DataFrame(cleaned_data)
-        print(f"✅ 清洗后数据: {len(result_df)} 条记录")
+        print(f"✅ 清洗后data: {len(result_df)} 条record")
         
         return result_df
         
     except Exception as e:
-        print(f"❌ 加载历史数据失败: {e}")
+        print(f"❌ 加载历史datafailed: {e}")
         return pd.DataFrame()
 
 
 def create_keyword_mapping() -> Dict[str, List[str]]:
     """
-    创建关键词到类别的映射
+    创建关键词到class别的映射
     
     Returns:
-        Dict[str, List[str]]: 类别到关键词的映射
+        Dict[str, List[str]]: class别到关键词的映射
     """
     keyword_mapping = {
         "Endangered Tree": [
@@ -235,30 +235,30 @@ def create_keyword_mapping() -> Dict[str, List[str]]:
 
 
 class SubjectMatterClassifier:
-    """主题分类器"""
+    """主题classify器"""
     
     def __init__(self, historical_data_paths: List[str]):
         """
-        初始化分类器，使用缓存优化
+        initializeclassify器，使用cache优化
         
         Args:
-            historical_data_paths: 历史数据文件路径列表
+            historical_data_paths: 历史datafile path列table
         """
-        # 尝试从缓存获取分类器
+        # 尝试从cachegetclassify器
         cache_key = "subject_matter_classifier"
         cached_classifier = get_cached_model(cache_key)
         
         if cached_classifier:
-            # 使用缓存的分类器
+            # 使用cache的classify器
             self.historical_data = cached_classifier.get('historical_data')
             self.keyword_mapping = cached_classifier.get('keyword_mapping')
             self.vectorizer = cached_classifier.get('vectorizer')
             self.model = cached_classifier.get('model')
             self.label_encoder = cached_classifier.get('label_encoder')
-            print("🚀 使用缓存的主题分类器")
+            print("🚀 使用cache的主题classify器")
             return
         
-        # 缓存未命中，正常初始化
+        # cache未命中，正常initialize
         self.historical_data = self._load_all_historical_data(historical_data_paths)
         self.keyword_mapping = create_keyword_mapping()
         self.vectorizer = TfidfVectorizer(max_features=1000, stop_words='english', ngram_range=(1, 2))
@@ -266,7 +266,7 @@ class SubjectMatterClassifier:
         self.label_encoder = LabelEncoder()
         self._train_model()
         
-        # 缓存分类器
+        # cacheclassify器
         try:
             classifier_cache = {
                 'historical_data': self.historical_data,
@@ -277,10 +277,10 @@ class SubjectMatterClassifier:
             }
             cache_model(cache_key, classifier_cache)
         except Exception as e:
-            print(f"⚠️ 缓存主题分类器失败: {e}")
+            print(f"⚠️ cache主题classify器failed: {e}")
     
     def _load_all_historical_data(self, data_paths: List[str]) -> pd.DataFrame:
-        """加载所有历史数据"""
+        """加载所有历史data"""
         all_data = []
         
         for path in data_paths:
@@ -291,14 +291,14 @@ class SubjectMatterClassifier:
         
         if all_data:
             combined_df = pd.concat(all_data, ignore_index=True)
-            print(f"✅ 总历史数据: {len(combined_df)} 条记录")
+            print(f"✅ 总历史data: {len(combined_df)} 条record")
             return combined_df
         else:
-            print("⚠️ 未找到有效历史数据")
+            print("⚠️ 未找到有效历史data")
             return pd.DataFrame()
     
     def _preprocess_text(self, text: str) -> str:
-        """预处理文本"""
+        """预process文本"""
         if not text:
             return ""
         
@@ -314,16 +314,16 @@ class SubjectMatterClassifier:
         return text
     
     def _map_to_standard_category(self, complaint_text: str) -> str:
-        """将历史数据映射到标准类别"""
+        """将历史data映射到标准class别"""
         text_lower = complaint_text.lower()
         
-        # 直接匹配
+        # 直接match
         for category, keywords in self.keyword_mapping.items():
             for keyword in keywords:
                 if keyword.lower() in text_lower:
                     return category
         
-        # 特殊映射规则
+        # 特殊map规则
         mapping_rules = {
             'trimming': 'Tree Trimming/ Pruning',
             'withered tree': 'Hazardous tree',
@@ -340,14 +340,14 @@ class SubjectMatterClassifier:
         return "Others"
     
     def _train_model(self):
-        """训练机器学习模型"""
+        """training机器学习model"""
         if self.historical_data.empty:
-            print("⚠️ 无历史数据，仅使用规则分类")
+            print("⚠️ 无历史data，仅使用规则classify")
             return
         
-        print("🤖 训练主题分类模型...")
+        print("🤖 training主题classifymodel...")
         
-        # 准备训练数据
+        # 准备trainingdata
         texts = []
         labels = []
         
@@ -356,47 +356,47 @@ class SubjectMatterClassifier:
             processed_text = self._preprocess_text(complaint_text)
             
             if processed_text:
-                # 映射到标准类别
+                # map到标准class别
                 category = self._map_to_standard_category(complaint_text)
                 texts.append(processed_text)
                 labels.append(category)
         
         if len(texts) < 10:
-            print("⚠️ 训练数据不足，仅使用规则分类")
+            print("⚠️ trainingdata不足，仅使用规则classify")
             return
         
-        # 编码标签
+        # encoding标签
         encoded_labels = self.label_encoder.fit_transform(labels)
         
-        # 向量化文本
+        # vector化文本
         X = self.vectorizer.fit_transform(texts)
         
-        # 分割训练测试集
+        # splittrainingtest集
         X_train, X_test, y_train, y_test = train_test_split(
             X, encoded_labels, test_size=0.2, random_state=42, stratify=encoded_labels
         )
         
-        # 训练模型
+        # trainingmodel
         self.model.fit(X_train, y_train)
         
-        # 评估模型
+        # evaluatemodel
         y_pred = self.model.predict(X_test)
         accuracy = accuracy_score(y_test, y_pred)
         
-        print(f"✅ 模型训练完成，准确率: {accuracy:.2f}")
+        print(f"✅ modeltraining完成，accuracy: {accuracy:.2f}")
         
-        # 显示分类报告
+        # 显示classify报告
         try:
             target_names = self.label_encoder.classes_
-            print("\n模型评估:")
+            print("\nmodel评估:")
             print(classification_report(y_test, y_pred, target_names=target_names, zero_division=0))
         except Exception as e:
-            print(f"\n⚠️ 分类报告生成失败: {e}")
-            print(f"模型准确率: {accuracy:.2f}")
+            print(f"\n⚠️ classify报告生成failed: {e}")
+            print(f"modelaccuracy: {accuracy:.2f}")
     
     def _rule_based_classify(self, case_data: Dict[str, Any]) -> Tuple[Optional[str], float, str]:
-        """基于规则的分类"""
-        # 收集所有文本信息
+        """基于规则的classify"""
+        # 收集所有文本information
         text_sources = [
             case_data.get('I_nature_of_request', ''),
             case_data.get('J_subject_matter', ''),
@@ -409,7 +409,7 @@ class SubjectMatterClassifier:
         if not combined_text.strip():
             return None, 0.0, "no_content"
         
-        # 关键词匹配评分
+        # 关key词match评分
         category_scores = {}
         
         for category, keywords in self.keyword_mapping.items():
@@ -418,7 +418,7 @@ class SubjectMatterClassifier:
             
             for keyword in keywords:
                 if keyword.lower() in combined_text:
-                    # 根据关键词重要性给分
+                    # 根据关key词重要性给分
                     if len(keyword) > 10:  # 长关键词更精确
                         score += 3
                     elif len(keyword) > 5:
@@ -434,21 +434,21 @@ class SubjectMatterClassifier:
                 }
         
         if category_scores:
-            # 选择得分最高的类别
+            # 选择得分最高的class别
             best_category = max(category_scores.keys(), key=lambda x: category_scores[x]['score'])
             max_score = category_scores[best_category]['score']
-            confidence = min(max_score / 10.0, 1.0)  # 归一化置信度
+            confidence = min(max_score / 10.0, 1.0)  # 归一化confidence
             
             return best_category, confidence, f"rule_based (keywords: {category_scores[best_category]['keywords'][:3]})"
         
         return None, 0.0, "no_match"
     
     def _ml_classify(self, case_data: Dict[str, Any]) -> Tuple[str, float, str]:
-        """基于机器学习的分类"""
+        """基于机器学习的classify"""
         if not hasattr(self.model, 'predict'):
             return "Others", 0.3, "ml_not_available"
         
-        # 收集文本信息
+        # 收集文本information
         text_sources = [
             case_data.get('I_nature_of_request', ''),
             case_data.get('J_subject_matter', ''),
@@ -463,44 +463,44 @@ class SubjectMatterClassifier:
             return "Others", 0.3, "no_text_for_ml"
         
         try:
-            # 向量化
+            # vector化
             X = self.vectorizer.transform([processed_text])
             
-            # 预测
+            # prediction
             prediction = self.model.predict(X)[0]
             probabilities = self.model.predict_proba(X)[0]
             
-            # 解码标签
+            # decoding标签
             predicted_category = self.label_encoder.inverse_transform([prediction])[0]
             confidence = max(probabilities)
             
             return predicted_category, confidence, f"machine_learning"
             
         except Exception as e:
-            print(f"⚠️ ML分类失败: {e}")
+            print(f"⚠️ MLclassifyfailed: {e}")
             return "Others", 0.3, "ml_error"
     
     def classify(self, case_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        主分类方法
+        主classifymethod
         
         Args:
-            case_data: 案件数据
+            case_data: 案件data
             
         Returns:
-            Dict: 分类结果
+            Dict: classifyresult
         """
-        print("🔍 开始主题分类...")
+        print("🔍 开始主题classify...")
         
-        # 1. 尝试规则分类
+        # 1. 尝试规则classify
         rule_result, rule_confidence, rule_method = self._rule_based_classify(case_data)
         
-        # 2. 尝试ML分类
+        # 2. 尝试MLclassify
         ml_result, ml_confidence, ml_method = self._ml_classify(case_data)
         
         # 3. 决策逻辑
         if rule_result and rule_confidence >= 0.7:
-            # 高置信度规则分类
+            # 高confidence规则classify
             final_category = rule_result
             final_confidence = rule_confidence
             final_method = rule_method
@@ -510,22 +510,22 @@ class SubjectMatterClassifier:
             final_confidence = (rule_confidence + ml_confidence) / 2
             final_method = f"consensus ({rule_method} + {ml_method})"
         elif ml_confidence >= 0.6:
-            # 高置信度ML分类
+            # 高confidenceMLclassify
             final_category = ml_result
             final_confidence = ml_confidence
             final_method = ml_method
         elif rule_result:
-            # 使用规则分类
+            # 使用规则classify
             final_category = rule_result
             final_confidence = rule_confidence
             final_method = rule_method
         else:
-            # 默认分类
+            # 默认classify
             final_category = "Others"
             final_confidence = 0.3
             final_method = "default"
         
-        # 获取类别ID
+        # getclass别ID
         category_id = CATEGORY_TO_ID.get(final_category, 11)  # 默认为Others
         
         result = {
@@ -537,50 +537,50 @@ class SubjectMatterClassifier:
             'ml_result': ml_result
         }
         
-        print(f"✅ 主题分类完成: {final_category} (ID: {category_id}, 置信度: {final_confidence:.2f})")
+        print(f"✅ 主题classify完成: {final_category} (ID: {category_id}, confidence: {final_confidence:.2f})")
         
         return result
 
 
 def classify_subject_matter_ai(case_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    AI主题分类入口函数
+    AI主题classify入口函数
     
     Args:
-        case_data: 案件数据，包含以下字段：
+        case_data: 案件data，包含以下field：
             - I_nature_of_request: 请求性质
             - J_subject_matter: 主题事项
             - Q_case_details: 案件详情
             - content: 原始内容
             
     Returns:
-        Dict: 分类结果
+        Dict: classifyresult
         {
-            'predicted_category': str,  # 预测类别名称
-            'category_id': int,         # 类别ID
-            'confidence': float,        # 置信度
-            'method': str,              # 分类方法
-            'rule_result': str,         # 规则分类结果
-            'ml_result': str            # ML分类结果
+            'predicted_category': str,  # predictionclass别名称
+            'category_id': int,         # class别ID
+            'confidence': float,        # confidence
+            'method': str,              # classifymethod
+            'rule_result': str,         # 规则classifyresult
+            'ml_result': str            # MLclassifyresult
         }
     """
     try:
-        # 历史数据路径
+        # 历史data路径
         historical_data_paths = [
             'models/ai_models/training_data.pkl',
             'models/ai_models/training_data.pkl'
         ]
         
-        # 创建分类器
+        # createclassify器
         classifier = SubjectMatterClassifier(historical_data_paths)
         
-        # 执行分类
+        # 执行classify
         result = classifier.classify(case_data)
         
         return result
         
     except Exception as e:
-        print(f"❌ 主题分类失败: {e}")
+        print(f"❌ 主题classifyfailed: {e}")
         return {
             'predicted_category': 'Others',
             'category_id': 11,
@@ -592,10 +592,10 @@ def classify_subject_matter_ai(case_data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def test_subject_matter_classifier():
-    """测试主题分类器"""
-    print("=== 主题分类器测试 ===\n")
+    """测试主题classify器"""
+    print("=== 主题classify器测试 ===\n")
     
-    # 测试用例
+    # test用例
     test_cases = [
         {
             'name': '草坪修剪',
@@ -638,10 +638,10 @@ def test_subject_matter_classifier():
         print(f"📋 测试案例: {test_case['name']}")
         result = classify_subject_matter_ai(test_case['data'])
         
-        print(f"   预测类别: {result['predicted_category']}")
-        print(f"   类别ID: {result['category_id']}")
-        print(f"   置信度: {result['confidence']:.2f}")
-        print(f"   分类方法: {result['method']}")
+        print(f"   predictionclass别: {result['predicted_category']}")
+        print(f"   class别ID: {result['category_id']}")
+        print(f"   confidence: {result['confidence']:.2f}")
+        print(f"   classifymethod: {result['method']}")
         print()
 
 

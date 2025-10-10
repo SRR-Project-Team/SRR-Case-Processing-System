@@ -1,21 +1,21 @@
 """
-数据库模型定义模块
+data库model定义module
 
-本模块定义SRR案件处理系统的数据库模型，使用SQLAlchemy ORM框架
-进行数据库操作。模型严格按照A-Q字段规范设计，确保数据一致性。
+本module定义SRR案件process系统的data库model，使用SQLAlchemy ORM框架
+进行data库操作。model严格按照A-Qfield规范设计，确保data一致性。
 
-主要功能：
-1. 定义SRR案件数据表结构
-2. 映射A-Q字段到数据库列
-3. 配置时间戳和索引
-4. 支持软删除和审计功能
+mainfunction：
+1. 定义SRR案件datatable结构
+2. mapA-Qfield到data库列
+3. configuration时间戳和索引
+4. 支持软delete和审计function
 
-数据模型特点：
-- 18个A-Q字段完整映射
+datamodel特点：
+- 18个A-Qfield完整map
 - 北京时间时区支持
-- 自动时间戳管理
-- 软删除机制
-- 系统审计字段
+- automatic时间戳管理
+- 软delete机制
+- 系统审计field
 
 作者: Project3 Team
 版本: 2.0
@@ -25,26 +25,26 @@ from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 import pytz
 
-# 创建SQLAlchemy基础类
+# createSQLAlchemy基础class
 Base = declarative_base()
 
 class SRRCase(Base):
     """
-    SRR案件数据表模型
+    SRR案件datatablemodel
     
-    映射SRR案件的所有字段到数据库表，包括：
-    - A-Q字段：18个核心业务字段
-    - 系统字段：ID、时间戳、状态等
-    - 元数据字段：文件名、文件类型、处理时间等
+    映射SRR案件的所有field到data库table，包括：
+    - A-Qfield：18个核心业务field
+    - 系统field：ID、时间戳、状态等
+    - 元datafield：文件名、文件class型、process时间等
     
-    表名: srr_cases
+    table名: srr_cases
     主键: id (自增整数)
     """
     __tablename__ = "srr_cases"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     
-    # A-Q字段 (对应StructuredCaseData)
+    # A-Qfield (对应StructuredCaseData)
     A_date_received = Column(String(50))
     B_source = Column(String(50))
     C_case_number = Column(String(50))
@@ -64,7 +64,7 @@ class SRRCase(Base):
     P_fax_pages = Column(String(50))
     Q_case_details = Column(Text)
     
-    # 系统字段
+    # 系统field
     original_filename = Column(String(255))
     file_type = Column(String(20))  # txt, tmo, rcc
     processing_time = Column(DateTime, default=lambda: datetime.now(pytz.timezone('Asia/Shanghai')))

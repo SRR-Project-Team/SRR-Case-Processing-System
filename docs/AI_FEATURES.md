@@ -1,54 +1,54 @@
-# 🤖 AI功能文档
+# 🤖 AI Features Documentation
 
-## 📋 概述
+## 📋 Overview
 
-SRR案件处理系统集成了多种AI技术，提供智能化的文档处理和数据分类功能。
+The SRR case processing system integrates multiple AI technologies to provide intelligent document processing and data classification capabilities.
 
-## 🎯 AI功能模块
+## 🎯 AI Feature Modules
 
-### 1. 案件类型分类
-- **功能**: 自动分类案件为Emergency、Urgent、General
-- **技术**: 随机森林 + TF-IDF向量化
-- **准确率**: 92%
-- **数据源**: 历史案件数据和规则文档
+### 1. Case Type Classification
+- **Function**: Automatically classify cases as Emergency, Urgent, General
+- **Technology**: Random Forest + TF-IDF vectorization
+- **Accuracy**: 92%
+- **Data Source**: Historical case data and rule documents
 
-### 2. 主题分类
-- **功能**: 从17个预定义主题中选择最合适的分类
-- **技术**: 机器学习模型 + 关键词匹配
-- **准确率**: 98%
-- **分类选项**: 包括"Cracked slope/Wall Surface"、"Drainage Blockage"等
+### 2. Subject Classification
+- **Function**: Select the most appropriate classification from 17 predefined subjects
+- **Technology**: Machine learning model + keyword matching
+- **Accuracy**: 98%
+- **Classification Options**: Including "Cracked slope/Wall Surface", "Drainage Blockage", etc.
 
-### 3. 请求摘要
-- **功能**: 生成简洁的案件请求摘要
-- **技术**: BART模型 + 规则匹配
-- **特点**: 17种请求模式识别
-- **输出**: 自然语言摘要
+### 3. Request Summarization
+- **Function**: Generate concise case request summaries
+- **Technology**: BART model + rule matching
+- **Features**: 17 request pattern recognition
+- **Output**: Natural language summaries
 
-### 4. OCR增强
-- **功能**: 高精度图像文字识别
-- **技术**: EasyOCR + 图像预处理
-- **特点**: 多语言支持、错误纠正
+### 4. OCR Enhancement
+- **Function**: High-precision image text recognition
+- **Technology**: EasyOCR + image preprocessing
+- **Features**: Multi-language support, error correction
 - **准确率**: 95%
 
 ## 🔧 技术实现
 
-### 机器学习模型
+### machine learning模型
 ```python
-# 案件类型分类器
+# 案件class型分class器
 from src.ai.ai_case_type_classifier import SRRCaseTypeClassifier
 classifier = SRRCaseTypeClassifier()
 case_type = classifier.classify_case_type(content)
 ```
 
-### NLP处理
+### NLPprocessing
 ```python
-# 请求摘要生成
+# request摘要生成
 from src.ai.ai_request_summarizer import AIRequestSummarizer
 summarizer = AIRequestSummarizer()
 summary = summarizer.generate_summary(content)
 ```
 
-### OCR处理
+### OCRprocessing
 ```python
 # 图像文字识别
 import easyocr
@@ -56,21 +56,21 @@ reader = easyocr.Reader(['en', 'ch_sim', 'ch_tra'])
 results = reader.readtext(image)
 ```
 
-## 📊 性能优化
+## 📊 performanceoptimize
 
-### 模型缓存
+### 模型cache
 - **AI模型缓存**: 避免重复训练
 - **规则缓存**: 提高分类速度
 - **结果缓存**: 减少重复计算
 
-### 处理优化
+### processingoptimize
 - **批量处理**: 提高处理效率
 - **异步处理**: 避免阻塞
 - **错误恢复**: 自动重试机制
 
 ## 🎯 使用场景
 
-### 自动分类
+### automatic分class
 1. 上传案件文件
 2. 系统自动提取内容
 3. AI分析并分类
@@ -88,9 +88,9 @@ results = reader.readtext(image)
 3. 多引擎识别
 4. 结果后处理
 
-## 📈 准确率统计
+## 📈 准确率statistics
 
-### 分类准确率
+### 分class准确率
 - **案件类型**: 92%
 - **主题分类**: 98%
 - **来源识别**: 95%
@@ -100,14 +100,14 @@ results = reader.readtext(image)
 - **中文文档**: 95%
 - **混合文档**: 93%
 
-## 🔄 模型更新
+## 🔄 模型update
 
-### 训练数据
+### 训练data
 - **历史案件**: 1000+ 真实案件
 - **规则文档**: 官方分类规则
 - **用户反馈**: 持续优化
 
-### 更新机制
+### update机制
 - **定期重训练**: 每月更新
 - **增量学习**: 新数据集成
 - **A/B测试**: 性能验证

@@ -1,30 +1,30 @@
 #!/usr/bin/env python3
 """
-SRR案件处理系统启动脚本
+SRR Case Processing System Startup Script
 
-本脚本提供便捷的系统启动、管理和监控功能，支持：
-- 自动检测和清理现有进程
-- 一键启动前后端服务
-- 实时日志监控
-- 系统健康检查
-- 智能进程管理
+This script provides convenient system startup, management and monitoring functionality, supporting:
+- Automatic detection and cleanup of existing processes
+- One-click startup of frontend and backend services
+- Real-time log monitoring
+- System health checks
+- Intelligent process management
 
-主要功能：
-1. 依赖检查和环境验证
-2. 进程冲突检测和清理
-3. 前后端服务启动
-4. 实时日志显示
-5. 系统状态监控
+Main Features:
+1. Dependency check and environment verification
+2. Process conflict detection and cleanup
+3. Frontend and backend service startup
+4. Real-time log display
+5. System status monitoring
 
-使用方式：
-- python start.py start        # 启动系统
-- python start.py start --logs # 启动系统（实时日志）
-- python start.py check        # 系统检查
-- python start.py cleanup      # 清理进程
-- python start.py help         # 帮助信息
+Usage:
+- python start.py start        # Start system
+- python start.py start --logs # Start system (real-time logs)
+- python start.py check        # System check
+- python start.py cleanup      # Cleanup processes
+- python start.py help         # Help information
 
-作者: Project3 Team
-版本: 2.0
+Author: Project3 Team
+Version: 2.0
 """
 
 import os
@@ -37,14 +37,14 @@ from pathlib import Path
 
 class SRRSystemManager:
     """
-    SRR系统管理器
+    SRR System Manager
     
-    负责管理SRR案件处理系统的启动、停止和监控。
-    支持智能进程管理、实时日志显示和系统健康检查。
+    Responsible for managing the startup, shutdown and monitoring of the SRR case processing system.
+    Supports intelligent process management, real-time log display and system health checks.
     
     Attributes:
-        project_root (Path): 项目根目录路径
-        backend_process (subprocess.Popen): 后端进程对象
+        project_root (Path): Project root directory path
+        backend_process (subprocess.Popen): Backend process object
         frontend_process (subprocess.Popen): 前端进程对象
         running (bool): 系统运行状态
         show_logs (bool): 是否显示实时日志
@@ -133,7 +133,7 @@ class SRRSystemManager:
         existing_processes = []
         
         try:
-            # 检查Python后端进程
+            # checkPython后端进程
             result = subprocess.run(['pgrep', '-f', 'main.py'], 
                                   capture_output=True, text=True)
             if result.returncode == 0:
@@ -145,7 +145,7 @@ class SRRSystemManager:
             pass
         
         try:
-            # 检查React前端进程
+            # checkReact前端进程
             result = subprocess.run(['pgrep', '-f', 'react-scripts'], 
                                   capture_output=True, text=True)
             if result.returncode == 0:
@@ -157,7 +157,7 @@ class SRRSystemManager:
             pass
         
         try:
-            # 检查npm start进程
+            # checknpm start进程
             result = subprocess.run(['pgrep', '-f', 'npm.*start'], 
                                   capture_output=True, text=True)
             if result.returncode == 0:
@@ -206,9 +206,9 @@ class SRRSystemManager:
         except:
             pass
         
-        # 清理端口占用
+        # cleanup端口占用
         try:
-            # 清理8001端口
+            # cleanup8001端口
             result = subprocess.run(['lsof', '-ti:8001'], 
                                   capture_output=True, text=True)
             if result.returncode == 0:
@@ -221,7 +221,7 @@ class SRRSystemManager:
             pass
         
         try:
-            # 清理3000端口
+            # cleanup3000端口
             result = subprocess.run(['lsof', '-ti:3000'], 
                                   capture_output=True, text=True)
             if result.returncode == 0:
@@ -245,7 +245,7 @@ class SRRSystemManager:
         
         remaining = self.check_existing_processes()
         
-        # 检查端口占用
+        # check端口占用
         port_8001_free = True
         port_3000_free = True
         
@@ -290,13 +290,13 @@ class SRRSystemManager:
             os.chdir(backend_dir)
             
             if self.show_logs:
-                # 显示日志模式：不使用PIPE，让日志直接输出
+                # 显示log模式：不使用PIPE，让log直接输出
                 self.backend_process = subprocess.Popen([
                     sys.executable, "main.py"
                 ])
                 print("📋 Backend logs will be displayed in real-time")
             else:
-                # 静默模式：使用PIPE重定向日志
+                # 静默模式：使用PIPE重定向log
                 self.backend_process = subprocess.Popen([
                     sys.executable, "main.py"
                 ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -307,7 +307,7 @@ class SRRSystemManager:
                 print("✅ Backend server started on http://localhost:8001")
                 
                 if not self.show_logs:
-                    # 启动日志监控线程
+                    # 启动logmonitor线程
                     self.start_log_monitoring()
                 
                 return True
@@ -333,7 +333,7 @@ class SRRSystemManager:
             """Monitor backend process logs"""
             try:
                 while self.running and self.backend_process:
-                    # 读取后端进程的输出
+                    # read后端进程的输出
                     if self.backend_process.stdout:
                         line = self.backend_process.stdout.readline()
                         if line:
@@ -360,7 +360,7 @@ class SRRSystemManager:
             """Monitor frontend process logs"""
             try:
                 while self.running and self.frontend_process:
-                    # 读取前端进程的输出
+                    # read前端进程的输出
                     if self.frontend_process.stdout:
                         line = self.frontend_process.stdout.readline()
                         if line:
@@ -409,13 +409,13 @@ class SRRSystemManager:
             os.chdir(frontend_dir)
             
             if self.show_logs:
-                # 显示日志模式：不使用PIPE，让日志直接输出
+                # 显示log模式：不使用PIPE，让log直接输出
                 self.frontend_process = subprocess.Popen([
                     'npm', 'start'
                 ])
                 print("📋 Frontend logs will be displayed in real-time")
             else:
-                # 静默模式：使用PIPE重定向日志
+                # 静默模式：使用PIPE重定向log
                 self.frontend_process = subprocess.Popen([
                     'npm', 'start'
                 ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -428,7 +428,7 @@ class SRRSystemManager:
                 print("✅ Frontend server started on http://localhost:3000")
                 
                 if not self.show_logs:
-                    # 启动前端日志监控线程
+                    # 启动前端logmonitor线程
                     self.start_frontend_log_monitoring()
                 
                 return True
@@ -569,7 +569,7 @@ class SRRSystemManager:
 
 def main():
     """Main entry point"""
-    # 检查是否有 --logs 参数
+    # check是否有 --logs parameter
     show_logs = "--logs" in sys.argv
     manager = SRRSystemManager(show_logs=show_logs)
     

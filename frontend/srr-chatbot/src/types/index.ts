@@ -1,4 +1,4 @@
-// 消息类型
+// Message types
 export interface Message {
   id: string;
   type: 'user' | 'bot';
@@ -7,15 +7,15 @@ export interface Message {
   fileInfo?: FileInfo;
 }
 
-// 文件信息
+// File information
 export interface FileInfo {
   name: string;
   size: number;
   type: string;
-  summary?: FileSummary;  // 新增总结字段
+  summary?: FileSummary;  // Added summary field
 }
 
-// 提取的案件数据
+// Extracted case data
 export interface ExtractedData {
   A_date_received: string;
   B_source: string;
@@ -37,7 +37,7 @@ export interface ExtractedData {
   Q_case_details: string;
 }
 
-// 添加总结相关类型
+// Add summary related types
 export interface FileSummary {
   success: boolean;
   summary?: string;
@@ -46,17 +46,17 @@ export interface FileSummary {
   error?: string;
 }
 
-// API响应类型
+// API response types
 export interface ApiResponse {
   filename: string;
   status: 'success' | 'error';
   message: string;
   data?: ExtractedData;
   error?: string;
-  summary?: FileSummary;  // 新增总结字段
+  summary?: FileSummary;  // Added summary field
 }
 
-// 聊天状态
+// Chat state
 export interface ChatState {
   messages: Message[];
   isLoading: boolean;
@@ -64,7 +64,7 @@ export interface ChatState {
   currentFile: FileInfo | null;
 }
 
-// 查询类型
+// Query types
 export interface QueryRequest {
   query: string;
   context?: ExtractedData;

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-来源分类器
-根据文件类型、内容和语义智能判断B_source字段的值
+来源classify器
+根据fileclass型、内容和语义智能判断B_sourcefield的value
 """
 
 import re
@@ -11,10 +11,10 @@ from typing import Optional, Dict, List
 
 
 class SourceClassifier:
-    """来源分类器"""
+    """来源classify器"""
     
     def __init__(self):
-        """初始化分类器"""
+        """initializeclassify器"""
         self.source_options = {
             "": "",
             "1": "ICC",
@@ -31,10 +31,10 @@ class SourceClassifier:
             "12": "Others"
         }
         
-        # 反向映射，用于查找
+        # 反向map，用于find
         self.source_name_to_id = {v: k for k, v in self.source_options.items() if v}
         
-        # 关键词映射
+        # 关key词map
         self.keyword_mappings = self._build_keyword_mappings()
     
     def _build_keyword_mappings(self) -> Dict[str, List[str]]:
@@ -83,60 +83,60 @@ class SourceClassifier:
     def classify_source(self, file_path: str = None, content: str = "", 
                        email_content: str = None, file_type: str = "txt") -> str:
         """
-        智能分类来源
+        智能classify来源
         
         Args:
-            file_path (str): 文件路径
+            file_path (str): file path
             content (str): 文件内容
             email_content (str): 邮件内容（如果有）
-            file_type (str): 文件类型 ('txt', 'pdf')
+            file_type (str): 文件class型 ('txt', 'pdf')
             
         Returns:
             str: 来源名称 (如 'E-mail', 'TMO', 'RCC' 等)
         """
-        print(f"🔍 开始来源分类...")
-        print(f"   文件路径: {file_path}")
-        print(f"   文件类型: {file_type}")
+        print(f"🔍 开始来源classify...")
+        print(f"   file path: {file_path}")
+        print(f"   文件class型: {file_type}")
         print(f"   有邮件内容: {'是' if email_content else '否'}")
         
         # 1. 优先级规则：邮件内容存在
         if email_content and email_content.strip():
-            print("📧 检测到邮件内容，分类为 E-mail")
+            print("📧 检测到邮件内容，classify为 E-mail")
             return "E-mail"
         
-        # 2. 文件名规则：ASD开头的PDF文件
+        # 2. file名规则：ASD开头的PDFfile
         if file_path and file_type.lower() == "pdf":
             filename = os.path.basename(file_path).upper()
             if filename.startswith("ASD"):
-                print("🌳 检测到ASD开头的PDF文件，分类为 TMO")
+                print("🌳 检测到ASD开头的PDF文件，classify为 TMO")
                 return "TMO"
         
-        # 3. 文件名规则：RCC开头的PDF文件
+        # 3. file名规则：RCC开头的PDFfile
         if file_path and file_type.lower() == "pdf":
             filename = os.path.basename(file_path).upper()
             if filename.startswith("RCC"):
-                print("📋 检测到RCC开头的PDF文件，分类为 RCC")
+                print("📋 检测到RCC开头的PDF文件，classify为 RCC")
                 return "RCC"
         
-        # 4. 内容分析
+        # 4. 内容analyze
         content_source = self._analyze_content(content)
         if content_source:
-            print(f"📄 根据内容分析，分类为 {content_source}")
+            print(f"📄 根据内容分析，classify为 {content_source}")
             return content_source
         
-        # 5. 文件类型默认规则
+        # 5. fileclass型默认规则
         if file_type.lower() == "pdf":
-            print("📄 PDF文件默认分类为 Others")
+            print("📄 PDF文件默认classify为 Others")
             return "Others"
         
-        # 6. TXT文件的渠道分析
+        # 6. TXTfile的渠道analyze
         if file_type.lower() == "txt":
             txt_source = self._analyze_txt_channel(content)
             if txt_source:
-                print(f"📝 根据TXT渠道分析，分类为 {txt_source}")
+                print(f"📝 根据TXT渠道分析，classify为 {txt_source}")
                 return txt_source
         
-        # 7. 默认值
+        # 7. 默认value
         print("❓ 无法确定来源，使用默认值 Others")
         return "Others"
     
@@ -147,7 +147,7 @@ class SourceClassifier:
         
         content_lower = content.lower()
         
-        # 按优先级检查关键词
+        # 按优先级check关key词
         priority_sources = [
             "TMO", "RCC", "ICC", "BDRC", "DC", 
             "E-mail", "Fax", "Telephone", "Press", 
@@ -163,11 +163,11 @@ class SourceClassifier:
         return None
     
     def _analyze_txt_channel(self, content: str) -> Optional[str]:
-        """分析TXT文件的Channel字段"""
+        """分析TXT文件的Channelfield"""
         if not content:
             return None
         
-        # 提取Channel字段
+        # extractChannelfield
         channel_match = re.search(r'Channel\s*:\s*([^\n]+)', content, re.IGNORECASE)
         if not channel_match:
             return None
@@ -175,11 +175,11 @@ class SourceClassifier:
         channel = channel_match.group(1).strip().lower()
         print(f"🔍 检测到Channel: {channel}")
         
-        # Channel映射规则
+        # Channelmap规则
         channel_mappings = {
             "email": "E-mail",
             "e-mail": "E-mail", 
-            "web": "E-mail",  # Web通常通过邮件系统处理
+            "web": "E-mail",  # Web通常通过邮件系统process
             "telephone": "Telephone",
             "phone": "Telephone",
             "tel": "Telephone",
@@ -205,12 +205,12 @@ class SourceClassifier:
         return self.source_options.copy()
 
 
-# 全局分类器实例
+# 全局classify器instance
 _source_classifier = None
 
 
 def get_source_classifier() -> SourceClassifier:
-    """获取全局来源分类器实例"""
+    """获取全局来源classify器instance"""
     global _source_classifier
     if _source_classifier is None:
         _source_classifier = SourceClassifier()
@@ -220,13 +220,13 @@ def get_source_classifier() -> SourceClassifier:
 def classify_source_smart(file_path: str = None, content: str = "", 
                          email_content: str = None, file_type: str = "txt") -> str:
     """
-    智能分类来源的便捷函数
+    智能classify来源的便捷函数
     
     Args:
-        file_path (str): 文件路径
+        file_path (str): file path
         content (str): 文件内容
         email_content (str): 邮件内容（如果有）
-        file_type (str): 文件类型
+        file_type (str): 文件class型
         
     Returns:
         str: 来源名称 (如 'E-mail', 'TMO', 'RCC' 等)
@@ -236,12 +236,12 @@ def classify_source_smart(file_path: str = None, content: str = "",
 
 
 def test_source_classifier():
-    """测试来源分类器"""
-    print("=== 来源分类器测试 ===\n")
+    """测试来源classify器"""
+    print("=== 来源classify器测试 ===\n")
     
     classifier = SourceClassifier()
     
-    # 测试用例
+    # test用例
     test_cases = [
         {
             'name': 'TXT文件带邮件内容',
@@ -304,12 +304,12 @@ def test_source_classifier():
             print(f"   ✅ 正确: {result}")
             success_count += 1
         else:
-            print(f"   ❌ 错误:")
+            print(f"   ❌ error:")
             print(f"      期望: {expected}")
             print(f"      实际: {result}")
     
     accuracy = success_count / len(test_cases)
-    print(f"\n📈 分类准确率: {accuracy:.1%} ({success_count}/{len(test_cases)})")
+    print(f"\n📈 classifyaccuracy: {accuracy:.1%} ({success_count}/{len(test_cases)})")
     
     # 显示所有来源选项
     print(f"\n📋 所有来源选项:")

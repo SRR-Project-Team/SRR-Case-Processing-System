@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-智能文件配对模块
-用于识别和配对TXT案件文件与对应的邮件文件
+智能file配对module
+用于识别和配对TXT案件file与对应的邮件file
 """
 
 import re
@@ -10,7 +10,7 @@ from typing import List, Dict, Tuple, Optional
 
 
 class FileInfo:
-    """文件信息类"""
+    """文件informationclass"""
     def __init__(self, filename: str, content_type: str, file_data: bytes = None):
         self.filename = filename
         self.content_type = content_type
@@ -23,18 +23,18 @@ class FileInfo:
         return self.filename.lower().startswith('emailcontent_')
     
     def _extract_case_id(self) -> Optional[str]:
-        """提取案件ID"""
+        """extract案件ID"""
         if self.is_email:
-            # 从 emailcontent_3-3YXXSJV.txt 提取 3-3YXXSJV
+            # 从 emailcontent_3-3YXXSJV.txt extract 3-3YXXSJV
             match = re.search(r'emailcontent_(.+?)\.txt$', self.filename, re.IGNORECASE)
             if match:
                 return match.group(1)
         else:
-            # 从 3-3YXXSJV.txt 提取 3-3YXXSJV
+            # 从 3-3YXXSJV.txt extract 3-3YXXSJV
             match = re.search(r'([^/\\]+)\.txt$', self.filename, re.IGNORECASE)
             if match:
                 base_name = match.group(1)
-                # 排除已知的邮件文件前缀
+                # 排除已知的邮件file前缀
                 if not base_name.lower().startswith('emailcontent_'):
                     return base_name
         return None
@@ -53,10 +53,10 @@ class SmartFilePairing:
     
     def pair_files(self) -> List[Dict]:
         """
-        配对文件并返回处理计划
+        配对文件并returnprocess计划
         
         Returns:
-            List[Dict]: 处理计划列表，每个元素包含：
+            List[Dict]: process计划列table，每个元素包含：
             {
                 'type': 'txt_with_email' | 'txt_only' | 'skip',
                 'main_file': FileInfo,
@@ -68,7 +68,7 @@ class SmartFilePairing:
         processing_plan = []
         processed_case_ids = set()
         
-        # 分离TXT文件和邮件文件
+        # 分离TXTfile和邮件file
         txt_files = [f for f in self.files if not f.is_email and f.filename.lower().endswith('.txt')]
         email_files = [f for f in self.files if f.is_email]
         
@@ -76,10 +76,10 @@ class SmartFilePairing:
         print(f"   - TXT案件文件: {len(txt_files)} 个")
         print(f"   - 邮件文件: {len(email_files)} 个")
         
-        # 为每个TXT文件寻找对应的邮件文件
+        # 为每个TXTfile寻找对应的邮件file
         for txt_file in txt_files:
             if txt_file.case_id and txt_file.case_id not in processed_case_ids:
-                # 寻找匹配的邮件文件
+                # 寻找match的邮件file
                 matching_email = self._find_matching_email(txt_file, email_files)
                 
                 if matching_email:
@@ -88,22 +88,22 @@ class SmartFilePairing:
                         'main_file': txt_file,
                         'email_file': matching_email,
                         'case_id': txt_file.case_id,
-                        'description': f'处理案件 {txt_file.case_id}（包含邮件信息）'
+                        'description': f'process案件 {txt_file.case_id}（包含邮件information）'
                     })
-                    print(f"✅ 配对成功: {txt_file.filename} + {matching_email.filename}")
+                    print(f"✅ 配对success: {txt_file.filename} + {matching_email.filename}")
                 else:
                     processing_plan.append({
                         'type': 'txt_only',
                         'main_file': txt_file,
                         'email_file': None,
                         'case_id': txt_file.case_id,
-                        'description': f'处理案件 {txt_file.case_id}（仅TXT文件）'
+                        'description': f'process案件 {txt_file.case_id}（仅TXT文件）'
                     })
-                    print(f"📄 单独处理: {txt_file.filename}")
+                    print(f"📄 单独process: {txt_file.filename}")
                 
                 processed_case_ids.add(txt_file.case_id)
         
-        # 检查未配对的邮件文件
+        # check未配对的邮件file
         unmatched_emails = [e for e in email_files if not any(
             plan['email_file'] and plan['email_file'].filename == e.filename 
             for plan in processing_plan
@@ -133,7 +133,7 @@ class SmartFilePairing:
         return None
     
     def get_processing_summary(self) -> Dict:
-        """获取处理摘要"""
+        """获取process摘要"""
         plan = self.pair_files()
         
         summary = {
@@ -148,23 +148,23 @@ class SmartFilePairing:
 
 
 def test_smart_file_pairing():
-    """测试智能文件配对功能"""
+    """测试智能文件配对function"""
     
     print("=== 智能文件配对测试 ===\n")
     
-    # 创建配对器
+    # createpairing
     pairing = SmartFilePairing()
     
-    # 测试场景1: 完整配对
+    # test场景1: 完整配对
     print("📋 测试场景1: 完整配对")
     pairing.add_file('3-3YXXSJV.txt', 'text/plain')
     pairing.add_file('emailcontent_3-3YXXSJV.txt', 'text/plain')
     
     summary1 = pairing.get_processing_summary()
-    print(f"处理摘要: {summary1['txt_with_email']} 个完整配对, {summary1['txt_only']} 个单独TXT, {summary1['skipped']} 个跳过")
+    print(f"process摘要: {summary1['txt_with_email']} 个完整配对, {summary1['txt_only']} 个单独TXT, {summary1['skipped']} 个跳过")
     print()
     
-    # 测试场景2: 混合情况
+    # test场景2: 混合情况
     print("📋 测试场景2: 混合情况")
     pairing = SmartFilePairing()
     pairing.add_file('3-3YXXSJV.txt', 'text/plain')
@@ -173,11 +173,11 @@ def test_smart_file_pairing():
     pairing.add_file('emailcontent_3-3ZZZZZZ.txt', 'text/plain')  # 没有对应TXT
     
     summary2 = pairing.get_processing_summary()
-    print(f"处理摘要: {summary2['txt_with_email']} 个完整配对, {summary2['txt_only']} 个单独TXT, {summary2['skipped']} 个跳过")
+    print(f"process摘要: {summary2['txt_with_email']} 个完整配对, {summary2['txt_only']} 个单独TXT, {summary2['skipped']} 个跳过")
     print()
     
-    # 显示详细处理计划
-    print("📋 详细处理计划:")
+    # 显示详细process计划
+    print("📋 详细process计划:")
     for i, plan in enumerate(summary2['processing_plan'], 1):
         print(f"   {i}. {plan['description']}")
 

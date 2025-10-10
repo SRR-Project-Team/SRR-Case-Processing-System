@@ -53,7 +53,8 @@ graph TB
 
 #### 1.1 File Upload
 - **Input**: Multiple file formats (TXT, PDF)
-- **Process**: Drag-and-drop interface with batch upload support
+- **Process**: Integrated chat interface with popup modal for file management
+- **Features**: Drag-and-drop support, batch upload, file preview
 - **Output**: File metadata and temporary storage
 
 #### 1.2 File Type Detection
@@ -221,10 +222,12 @@ FastAPI Application
 ### Frontend Components
 ```typescript
 React Application
-├── Chatbot Interface
-├── File Upload Component
+├── Integrated Chat Interface
+├── File Upload Modal
+├── File Info Modal
 ├── Progress Tracking
 ├── Results Display
+├── Popup Management
 └── Error Handling
 ```
 

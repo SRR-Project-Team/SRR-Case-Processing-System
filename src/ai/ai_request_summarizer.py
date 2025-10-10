@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-AI请求摘要生成器模块
+AIrequest摘要生成器module
 
-本模块专门用于从邮件或PDF（传真）内容中生成简洁、准确的请求摘要。
-与传统的邮件结构提取不同，本模块专注于识别和总结具体的请求内容。
+本module专门用于从邮件或PDF（传真）内容中生成简洁、准确的request摘要。
+与传统的邮件结构extract不同，本module专注于识别和summarize具体的request内容。
 
-主要功能：
-1. 智能识别17种不同类型的请求模式
-2. 从复杂内容中提取核心请求信息
+mainfunction：
+1. 智能识别17种不同class型的request模式
+2. 从复杂内容中extract核心requestinformation
 3. 生成简洁的自然语言摘要
-4. 支持多语言内容处理（中文/英文）
-5. 提供置信度评估和内容融合
+4. 支持多语言内容process（中文/英文）
+5. 提供confidenceevaluate和内容融合
 
 技术特点：
-- 基于正则表达式的模式匹配
+- 基于正则table达式的模式match
 - 多源内容融合算法
-- 置信度评分机制
-- 智能内容清理和格式化
+- confidence评分机制
+- 智能内容cleanup和format
 
 作者: Project3 Team
 版本: 2.0
@@ -32,19 +32,19 @@ class AIRequestSummarizer:
     """
     AI请求摘要生成器
     
-    专门用于从邮件或PDF内容中提取和总结具体的请求信息，
+    专门用于从邮件或PDF内容中extract和summarize具体的请求information，
     生成简洁、准确的案件请求摘要。
     
     Attributes:
-        request_patterns (List[Dict]): 请求识别模式列表
-        content_extractors (Dict): 内容提取器字典
+        request_patterns (List[Dict]): 请求识别模式列table
+        content_extractors (Dict): 内容extract器字典
     """
     
     def __init__(self):
         """
-        初始化摘要生成器
+        initialize摘要生成器
         
-        构建请求识别模式和内容提取器，用于后续的摘要生成。
+        构建请求识别模式和内容extract器，用于后续的摘要生成。
         """
         self.request_patterns = self._build_request_patterns()
         self.content_extractors = self._build_content_extractors()
@@ -52,7 +52,7 @@ class AIRequestSummarizer:
     def _build_request_patterns(self) -> List[Dict]:
         """构建请求识别模式"""
         return [
-            # 中文查询模式
+            # 中文query模式
             {
                 'pattern': r'主旨[：:]\s*([^\n]+)',
                 'type': 'subject',
@@ -63,7 +63,7 @@ class AIRequestSummarizer:
                 'pattern': r'查詢([^\n，。]+)',
                 'type': 'inquiry',
                 'priority': 9,
-                'description': '查询请求'
+                'description': 'query请求'
             },
             {
                 'pattern': r'投訴([^\n，。]+)',
@@ -90,7 +90,7 @@ class AIRequestSummarizer:
                 'description': '报告事项'
             },
             
-            # 英文查询模式
+            # 英文query模式
             {
                 'pattern': r'Subject[：:]\s*([^\n]+)',
                 'type': 'subject',
@@ -127,7 +127,7 @@ class AIRequestSummarizer:
                 'pattern': r'斜坡[編编號号]*[：:]?\s*([^\s，。\n]+)',
                 'type': 'slope_info',
                 'priority': 6,
-                'description': '斜坡信息'
+                'description': '斜坡information'
             },
             {
                 'pattern': r'維修工程([^\n，。]+)',
@@ -139,14 +139,14 @@ class AIRequestSummarizer:
                 'pattern': r'進度([^\n，。]*)',
                 'type': 'progress',
                 'priority': 6,
-                'description': '进度查询'
+                'description': '进度query'
             }
         ]
     
     def _build_content_extractors(self) -> List[Dict]:
-        """构建内容提取器"""
+        """构建内容extract器"""
         return [
-            # TXT文件内容提取
+            # TXTfile内容extract
             {
                 'source': 'txt_outbound',
                 'patterns': [
@@ -165,7 +165,7 @@ class AIRequestSummarizer:
                 'priority': 8
             },
             
-            # 邮件内容提取
+            # 邮件内容extract
             {
                 'source': 'email_body',
                 'patterns': [
@@ -177,7 +177,7 @@ class AIRequestSummarizer:
                 'priority': 9
             },
             
-            # PDF内容提取
+            # PDF内容extract
             {
                 'source': 'pdf_content',
                 'patterns': [
@@ -198,51 +198,51 @@ class AIRequestSummarizer:
         Args:
             content: 主要内容（TXT/PDF内容）
             email_content: 邮件内容（可选）
-            content_type: 内容类型 ('txt', 'pdf', 'email')
+            content_type: 内容class型 ('txt', 'pdf', 'email')
             
         Returns:
             str: 生成的请求摘要
         """
         print("🤖 开始AI请求摘要生成...")
         
-        # 收集所有可能的请求信息
+        # 收集所有可能的requestinformation
         extracted_requests = []
         
-        # 1. 从主要内容提取
+        # 1. 从main内容extract
         if content:
             main_requests = self._extract_requests_from_content(content, content_type)
             extracted_requests.extend(main_requests)
         
-        # 2. 从邮件内容提取
+        # 2. 从邮件内容extract
         if email_content:
             email_requests = self._extract_requests_from_content(email_content, 'email')
             extracted_requests.extend(email_requests)
         
-        # 3. 按优先级排序并生成摘要
+        # 3. 按优先级sort并生成摘要
         if extracted_requests:
-            # 按优先级和置信度排序
+            # 按优先级和confidencesort
             extracted_requests.sort(key=lambda x: (x['priority'], x['confidence']), reverse=True)
             
             # 生成智能摘要
             summary = self._generate_intelligent_summary(extracted_requests)
             
             if summary:
-                print(f"✅ AI请求摘要生成成功: {summary}")
+                print(f"✅ AI请求摘要生成success: {summary}")
                 return summary
         
-        # 4. 如果没有提取到具体请求，使用传统方法
+        # 4. 如果没有extract到具体request，使用传统method
         fallback_summary = self._generate_fallback_summary(content, email_content)
-        print(f"⚠️ 使用备用摘要方法: {fallback_summary}")
+        print(f"⚠️ 使用备用摘要method: {fallback_summary}")
         return fallback_summary
     
     def _extract_requests_from_content(self, content: str, source_type: str) -> List[Dict]:
-        """从内容中提取请求信息"""
+        """从内容中extract请求information"""
         requests = []
         
         if not content or not content.strip():
             return requests
         
-        # 使用请求模式匹配
+        # 使用request模式match
         for pattern_info in self.request_patterns:
             pattern = pattern_info['pattern']
             matches = re.finditer(pattern, content, re.IGNORECASE | re.MULTILINE)
@@ -251,7 +251,7 @@ class AIRequestSummarizer:
                 extracted_text = match.group(1).strip() if match.groups() else match.group(0).strip()
                 
                 if extracted_text and len(extracted_text) > 3:  # 过滤太短的匹配
-                    # 计算置信度
+                    # calculateconfidence
                     confidence = self._calculate_confidence(extracted_text, pattern_info, source_type)
                     
                     requests.append({
@@ -266,8 +266,8 @@ class AIRequestSummarizer:
         return requests
     
     def _calculate_confidence(self, text: str, pattern_info: Dict, source_type: str) -> float:
-        """计算提取置信度"""
-        confidence = 0.5  # 基础置信度
+        """计算extractconfidence"""
+        confidence = 0.5  # 基础confidence
         
         # 根据文本长度调整
         if 10 <= len(text) <= 100:
@@ -275,36 +275,36 @@ class AIRequestSummarizer:
         elif len(text) > 100:
             confidence += 0.1
         
-        # 根据模式类型调整
+        # 根据模式class型调整
         if pattern_info['type'] in ['subject', 'inquiry', 'complaint']:
             confidence += 0.2
         
-        # 根据来源类型调整
+        # 根据来源class型调整
         if source_type == 'txt' and pattern_info['type'] == 'subject':
             confidence += 0.3
         elif source_type == 'email' and 'enquiry' in text.lower():
             confidence += 0.2
         
-        # 根据关键词调整
+        # 根据关key词调整
         keywords = ['斜坡', '維修', '工程', '進度', 'slope', 'maintenance', 'repair', 'progress']
         keyword_count = sum(1 for keyword in keywords if keyword.lower() in text.lower())
         confidence += keyword_count * 0.1
         
-        return min(confidence, 1.0)  # 最大置信度为1.0
+        return min(confidence, 1.0)  # 最大confidence为1.0
     
     def _generate_intelligent_summary(self, requests: List[Dict]) -> Optional[str]:
         """生成智能摘要"""
         if not requests:
             return None
         
-        # 选择最高优先级和置信度的请求
+        # 选择最高优先级和confidence的request
         best_request = requests[0]
         
-        # 如果是主旨类型，直接使用
+        # 如果是主旨class型，直接使用
         if best_request['type'] == 'subject' and best_request['confidence'] > 0.7:
             return self._clean_summary_text(best_request['text'])
         
-        # 组合多个相关请求
+        # 组合多个相关request
         summary_parts = []
         used_types = set()
         
@@ -320,7 +320,7 @@ class AIRequestSummarizer:
             if len(summary_parts) == 1:
                 return summary_parts[0]
             else:
-                # 检查是否可以合并
+                # check是否可以merge
                 combined = self._combine_summary_parts(summary_parts)
                 return combined
         
@@ -351,7 +351,7 @@ class AIRequestSummarizer:
         if not parts:
             return ""
         
-        # 检查是否有重复内容
+        # check是否有duplicate内容
         unique_parts = []
         for part in parts:
             is_duplicate = False
@@ -371,11 +371,11 @@ class AIRequestSummarizer:
             return unique_parts[0] + " 等多项请求"
     
     def _is_similar_content(self, text1: str, text2: str) -> bool:
-        """检查内容是否相似"""
+        """check内容是否相似"""
         if not text1 or not text2:
             return False
         
-        # 简单的相似度检查
+        # 简单的相似度check
         words1 = set(text1.lower().split())
         words2 = set(text2.lower().split())
         
@@ -390,7 +390,7 @@ class AIRequestSummarizer:
     
     def _generate_fallback_summary(self, content: str, email_content: str = None) -> str:
         """生成备用摘要"""
-        # 尝试从内容中提取任何有意义的信息
+        # 尝试从内容中extract任何有意义的information
         fallback_patterns = [
             r'主旨[：:]\s*([^\n]+)',
             r'Subject[：:]\s*([^\n]+)',
@@ -416,13 +416,13 @@ class AIRequestSummarizer:
         
         # 最后的备用方案
         if content and len(content.strip()) > 10:
-            # 提取前100个字符作为摘要
+            # extract前100个字符作为摘要
             summary = content.strip()[:100]
             if len(content.strip()) > 100:
                 summary += "..."
             return self._clean_summary_text(summary)
         
-        return "无法提取具体请求内容"
+        return "无法extract具体请求内容"
 
 
 def generate_ai_request_summary(content: str, email_content: str = None, 
@@ -433,7 +433,7 @@ def generate_ai_request_summary(content: str, email_content: str = None,
     Args:
         content: 主要内容
         email_content: 邮件内容（可选）
-        content_type: 内容类型
+        content_type: 内容class型
         
     Returns:
         str: 生成的请求摘要
@@ -446,10 +446,10 @@ def test_ai_request_summarizer():
     """测试AI请求摘要生成器"""
     print("=== AI请求摘要生成器测试 ===\n")
     
-    # 测试用例
+    # test用例
     test_cases = [
         {
-            'name': '斜坡维修查询',
+            'name': '斜坡维修query',
             'content': '主旨：查詢斜坡維修編號11SW-D/805維修工程進度 (檔案編號：3-8641924612)',
             'email_content': None,
             'type': 'txt'
@@ -478,10 +478,10 @@ def test_ai_request_summarizer():
                 test_case['type']
             )
             
-            print(f"   ✅ 摘要结果: {summary}")
+            print(f"   ✅ 摘要result: {summary}")
             
         except Exception as e:
-            print(f"   ❌ 测试失败: {e}")
+            print(f"   ❌ 测试failed: {e}")
         
         print()
 

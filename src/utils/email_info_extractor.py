@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-邮件信息提取模块
-从邮件内容中提取E_caller_name（落款）和F_contact_no（电话号码）
+邮件informationextractmodule
+从邮件内容中extractE_caller_name（落款）和F_contact_no（电话号码）
 """
 
 import re
@@ -11,25 +11,25 @@ from typing import Dict, Optional, Tuple
 
 def extract_email_contact_info(email_content: str) -> Dict[str, str]:
     """
-    从邮件内容中提取联系人信息
+    从邮件内容中extract联系人information
     
     Args:
         email_content: 邮件内容文本
         
     Returns:
-        dict: 包含E_caller_name和F_contact_no的字典
+        dict: 包含E_caller_name和F_contact_no的dictionary
     """
     result = {
         'E_caller_name': '',
         'F_contact_no': ''
     }
     
-    # 提取落款（签名）
+    # extract落款（signature）
     caller_name = extract_caller_name(email_content)
     if caller_name:
         result['E_caller_name'] = caller_name
     
-    # 提取电话号码
+    # extract电话号码
     contact_no = extract_contact_number(email_content)
     if contact_no:
         result['F_contact_no'] = contact_no
@@ -39,12 +39,12 @@ def extract_email_contact_info(email_content: str) -> Dict[str, str]:
 
 def extract_caller_name(email_content: str) -> str:
     """
-    提取邮件落款/签名中的姓名
+    extract邮件落款/signature中的姓名
     
     优先级：
     1. 1823 Duty Manager（标准格式）
-    2. 其他可能的签名格式
-    3. 发件人信息
+    2. 其他可能的signature格式
+    3. 发件人information
     """
     
     # 1. 标准1823格式
@@ -52,10 +52,10 @@ def extract_caller_name(email_content: str) -> str:
     if re.search(duty_manager_pattern, email_content, re.IGNORECASE):
         return "1823 Duty Manager"
     
-    # 2. 查找其他可能的签名格式
-    # 通常在邮件末尾，在联系信息之前
+    # 2. find其他可能的signature格式
+    # 通常在邮件末尾，在联系information之前
     signature_patterns = [
-        # 常见签名格式
+        # 常见signature格式
         r'(?:Best\s+regards?|Regards?|Sincerely|Thank\s+you)[,\s]*\n\s*([A-Za-z\s]+)\s*\n',
         r'(?:谢谢|此致|敬礼)[，\s]*\n\s*([A-Za-z\u4e00-\u9fff\s]+)\s*\n',
         
@@ -76,12 +76,12 @@ def extract_caller_name(email_content: str) -> str:
             if first_line and len(first_line) > 1 and not re.match(r'^\d+$', first_line):
                 return first_line
     
-    # 3. 从Distribution List提取发件人
+    # 3. 从Distribution Listextract发件人
     dist_pattern = r'Distribution\s+List\s*-\s*To\s*:\s*([^\n]+)'
     dist_match = re.search(dist_pattern, email_content, re.IGNORECASE)
     if dist_match:
         email_addr = dist_match.group(1).strip()
-        # 从邮箱地址提取部门信息
+        # 从邮箱地址extract部门information
         if '@' in email_addr:
             local_part = email_addr.split('@')[0]
             # 转换为可读的部门名称
@@ -89,13 +89,13 @@ def extract_caller_name(email_content: str) -> str:
             if dept_name:
                 return dept_name
     
-    # 4. 默认返回空字符串
+    # 4. 默认return空string
     return ""
 
 
 def extract_contact_number(email_content: str) -> str:
     """
-    提取邮件中的联系电话号码
+    extract邮件中的联系电话号码
     
     优先级：
     1. Tel: 后面的号码
@@ -115,12 +115,12 @@ def extract_contact_number(email_content: str) -> str:
         match = re.search(pattern, email_content, re.IGNORECASE)
         if match:
             phone = match.group(1).strip()
-            # 清理和格式化电话号码
+            # cleanup和format电话号码
             formatted_phone = format_phone_number(phone)
             if formatted_phone:
                 return formatted_phone
     
-    # 2. 从body内容中提取Tel No.
+    # 2. 从body内容中extractTel No.
     tel_no_pattern = r'Tel\s+No\.?\s*:\s*([0-9\s\-\+\(\)]+)'
     tel_match = re.search(tel_no_pattern, email_content, re.IGNORECASE)
     if tel_match:
@@ -129,7 +129,7 @@ def extract_contact_number(email_content: str) -> str:
         if formatted_phone:
             return formatted_phone
     
-    # 3. 查找其他可能的电话格式
+    # 3. find其他可能的电话格式
     general_phone_patterns = [
         r'(?:联系电话|手机|电话)[：:]\s*([0-9\s\-\+\(\)]+)',
         r'(?:Contact|Phone|Mobile)[：:]\s*([0-9\s\-\+\(\)]+)',
@@ -150,13 +150,13 @@ def extract_contact_number(email_content: str) -> str:
 
 def format_phone_number(phone: str) -> str:
     """
-    格式化电话号码
+    format电话号码
     
     Args:
-        phone: 原始电话号码字符串
+        phone: 原始电话号码string
         
     Returns:
-        str: 格式化后的电话号码
+        str: format后的电话号码
     """
     if not phone:
         return ""
@@ -186,12 +186,12 @@ def format_department_name(local_part: str) -> str:
         local_part: 邮箱地址@前面的部分
         
     Returns:
-        str: 格式化的部门名称
+        str: format的部门名称
     """
     if not local_part:
         return ""
     
-    # 常见部门缩写映射
+    # 常见部门缩写map
     dept_mapping = {
         'archsd_psb_enquiry': 'Architectural Services Department - Property Services Branch',
         'archsd': 'Architectural Services Department',
@@ -202,29 +202,29 @@ def format_department_name(local_part: str) -> str:
         'hyd': 'Highways Department',
     }
     
-    # 直接匹配
+    # 直接match
     if local_part.lower() in dept_mapping:
         return dept_mapping[local_part.lower()]
     
-    # 部分匹配
+    # 部分match
     for key, value in dept_mapping.items():
         if key in local_part.lower():
             return value
     
-    # 如果没有匹配，返回格式化的原始字符串
+    # 如果没有match，returnformat的原始string
     formatted = local_part.replace('_', ' ').title()
     return formatted if len(formatted) > 2 else ""
 
 
 def extract_citizen_contact_from_body(body_content: str) -> Dict[str, str]:
     """
-    从body文件中提取市民的联系信息（如果可用）
+    从bodyfile中extract市民的联系information（如果可用）
     
     Args:
-        body_content: body文件内容
+        body_content: bodyfile内容
         
     Returns:
-        dict: 包含市民联系信息的字典
+        dict: 包含市民联系information的dictionary
     """
     result = {
         'citizen_name': '',
@@ -235,7 +235,7 @@ def extract_citizen_contact_from_body(body_content: str) -> Dict[str, str]:
     if not body_content:
         return result
     
-    # 提取姓名（通常在Name:字段，但可能被隐藏）
+    # extract姓名（通常在Name:field，但可能被隐藏）
     name_patterns = [
         r'Name:\s*([^\n\r]+)',
         r'姓名:\s*([^\n\r]+)',
@@ -247,7 +247,7 @@ def extract_citizen_contact_from_body(body_content: str) -> Dict[str, str]:
         match = re.search(pattern, body_content, re.IGNORECASE)
         if match:
             name = match.group(1).strip()
-            # 过滤掉无效的姓名
+            # filter掉无效的姓名
             if (name and 
                 name not in ['', '***HIDDEN***', 'N/A'] and
                 not name.startswith('Email:') and
@@ -257,7 +257,7 @@ def extract_citizen_contact_from_body(body_content: str) -> Dict[str, str]:
                 result['citizen_name'] = name
                 break
     
-    # 提取电话号码
+    # extract电话号码
     tel_patterns = [
         r'Tel\s+No\.?\s*:\s*([0-9\s\-\+\(\)]+)',
         r'电话:\s*([0-9\s\-\+\(\)]+)',
@@ -274,7 +274,7 @@ def extract_citizen_contact_from_body(body_content: str) -> Dict[str, str]:
                     result['citizen_tel'] = formatted_tel
                     break
     
-    # 提取邮箱
+    # extract邮箱
     email_patterns = [
         r'Email:\s*([^\s\n\r]+@[^\s\n\r]+)',
         r'邮箱:\s*([^\s\n\r]+@[^\s\n\r]+)',
@@ -294,22 +294,22 @@ def extract_citizen_contact_from_body(body_content: str) -> Dict[str, str]:
 
 def get_email_contact_info(email_content: str, body_content: str = "") -> Dict[str, str]:
     """
-    综合提取邮件联系信息的主函数
+    综合extract邮件联系information的主function
     
     Args:
         email_content: 邮件内容
-        body_content: body文件内容（可选）
+        body_content: bodyfile内容（optional）
         
     Returns:
-        dict: 包含E_caller_name和F_contact_no的字典
+        dict: 包含E_caller_name和F_contact_no的dictionary
     """
-    # 从邮件内容提取
+    # 从邮件内容extract
     email_info = extract_email_contact_info(email_content)
     
-    # 从body内容提取市民信息（作为备选）
+    # 从body内容extract市民information（作为备选）
     citizen_info = extract_citizen_contact_from_body(body_content) if body_content else {}
     
-    # 决定最终使用的信息
+    # 决定最终使用的information
     result = {
         'E_caller_name': '',
         'F_contact_no': ''
@@ -331,10 +331,10 @@ def get_email_contact_info(email_content: str, body_content: str = "") -> Dict[s
 
 
 if __name__ == "__main__":
-    # 测试函数
-    print("=== 邮件信息提取测试 ===")
+    # testfunction
+    print("=== 邮件informationextracttest ===")
     
-    # 测试样例1
+    # test样例1
     sample_email = """
 To: - Property Services Branch,
 
@@ -352,12 +352,12 @@ Distribution List - To : archsd_psb_enquiry@archsd.gov.hk
 """
     
     result = extract_email_contact_info(sample_email)
-    print(f"测试样例1结果:")
+    print(f"测试样例1result:")
     print(f"E_caller_name: '{result['E_caller_name']}'")
     print(f"F_contact_no: '{result['F_contact_no']}'")
     print()
     
-    # 测试样例2 - body内容
+    # test样例2 - body内容
     sample_body = """
 Case Type:		Complaint
 Name:			张三
@@ -367,14 +367,14 @@ Details:	    投诉内容...
 """
     
     citizen_result = extract_citizen_contact_from_body(sample_body)
-    print(f"Body内容提取结果:")
+    print(f"Body内容extractresult:")
     print(f"citizen_name: '{citizen_result['citizen_name']}'")
     print(f"citizen_tel: '{citizen_result['citizen_tel']}'")
     print(f"citizen_email: '{citizen_result['citizen_email']}'")
     print()
     
-    # 综合测试
+    # 综合test
     combined_result = get_email_contact_info(sample_email, sample_body)
-    print(f"综合提取结果:")
+    print(f"综合extractresult:")
     print(f"E_caller_name: '{combined_result['E_caller_name']}'")
     print(f"F_contact_no: '{combined_result['F_contact_no']}'")

@@ -19,11 +19,11 @@ npm install
 
 ### 启动开发环境
 ```bash
-# 启动系统（实时日志模式）
+# 启动系统（real-timelog模式）
 python start.py start --logs
 ```
 
-## 🔧 开发工具
+## 🔧 开发utility
 
 ### 启动脚本
 - **实时日志**: `python start.py start --logs`
@@ -31,60 +31,60 @@ python start.py start --logs
 - **系统检查**: `python start.py check`
 - **进程清理**: `python start.py cleanup`
 
-### 数据库管理
+### data库管理
 ```bash
-# 查看统计信息
+# 查看statisticsinformation
 python database_manager.py stats
 
 # 列出案件
 python database_manager.py list 10
 
-# 搜索案件
+# search案件
 python database_manager.py search "关键词"
 
-# 导出数据
+# exportdata
 python database_manager.py export backup.json
 ```
 
-## 📊 日志和调试
+## 📊 log和debug
 
-### 日志级别
+### log级别
 - **INFO**: 正常操作信息
 - **WARNING**: 警告信息
 - **ERROR**: 错误信息
 
-### 调试技巧
+### debug技巧
 1. **使用实时日志模式**进行开发调试
 2. **查看浏览器控制台**了解前端错误
 3. **检查数据库状态**验证数据完整性
 4. **监控API请求**确保接口正常
 
-## 🗄️ 数据库开发
+## 🗄️ data库开发
 
 ### 模型定义
 ```python
 # src/database/models.py
 class SRRCase(Base):
     __tablename__ = "srr_cases"
-    # A-Q字段定义
+    # A-Qfield定义
 ```
 
-### 数据库操作
+### data库操作
 ```python
-# 获取数据库管理器
+# getdata库manager
 from src.database import get_db_manager
 db = get_db_manager()
 
-# 保存案件
+# save案件
 case_id = db.save_case(case_data)
 
-# 查询案件
+# query案件
 case = db.get_case(case_id)
 ```
 
-## 🔄 文件处理开发
+## 🔄 fileprocessing开发
 
-### 添加新的文件类型
+### 添加新的fileclass型
 1. 在 `src/core/` 目录创建新的提取器
 2. 在 `src/api/main.py` 添加处理逻辑
 3. 更新 `src/core/output.py` 的数据模型
@@ -126,9 +126,9 @@ export const processFile = async (file: File) => {
 };
 ```
 
-## 🧪 测试
+## 🧪 test
 
-### 单元测试
+### 单元test
 ```python
 # tests/test_module.py
 import unittest
@@ -140,21 +140,21 @@ class TestModule(unittest.TestCase):
         self.assertEqual(result, expected)
 ```
 
-### 集成测试
+### 集成test
 ```bash
-# 测试API端点
+# testAPIendpoint
 curl -X POST http://localhost:8001/api/process-srr-file \
   -F "file=@test.txt"
 ```
 
-## 📈 性能优化
+## 📈 performanceoptimize
 
-### 后端优化
+### 后端optimize
 - 使用数据库索引
 - 优化OCR参数
 - 实现模型缓存
 
-### 前端优化
+### 前端optimize
 - 组件懒加载
 - 图片压缩
 - 请求去重
@@ -167,7 +167,7 @@ curl -X POST http://localhost:8001/api/process-srr-file \
 3. **数据库错误**: 检查数据库文件权限
 4. **OCR失败**: 检查图片质量和格式
 
-### 调试步骤
+### debug步骤
 1. 检查系统状态
 2. 查看日志输出
 3. 验证数据完整性
