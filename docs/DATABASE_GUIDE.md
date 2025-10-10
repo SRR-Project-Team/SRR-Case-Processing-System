@@ -1,4 +1,4 @@
-# 🗄️ 数据库使用指南
+# 🗄️ data库使用指南
 
 ## 📋 概述
 
@@ -6,7 +6,7 @@ SRR案件处理系统采用SQLite数据库存储案件数据，提供完整的�
 
 ## 🏗️ 架构设计
 
-### 数据库结构
+### data库结构
 ```
 src/database/
 ├── __init__.py          # 模块初始化
@@ -25,41 +25,41 @@ src/database/
 ```python
 from src.database import get_db_manager
 
-# 获取数据库管理器
+# getdata库manager
 db = get_db_manager()
 
-# 保存案件
+# save案件
 case_data = {
     'A_date_received': '2025-01-15',
     'B_source': 'E-mail',
     'E_caller_name': '张三',
-    # ... 其他字段
+    # ... 其他field
 }
 case_id = db.save_case(case_data)
 ```
 
-### 2. 查询案件
+### 2. query案件
 ```python
-# 获取单个案件
+# get单个案件
 case = db.get_case(case_id)
 
-# 获取案件列表
+# get案件list
 cases = db.get_cases(limit=10, offset=0)
 
-# 搜索案件
+# search案件
 results = db.search_cases("关键词")
 ```
 
-### 3. 统计信息
+### 3. statisticsinformation
 ```python
-# 获取统计信息
+# getstatisticsinformation
 stats = db.get_stats()
 print(f"总案件数: {stats['total_cases']}")
 ```
 
-## 📊 数据模型
+## 📊 data模型
 
-### A-Q字段映射
+### A-Qfieldmap
 | 字段 | 描述 | 类型 |
 |------|------|------|
 | A_date_received | 接收日期 | String(50) |
@@ -81,7 +81,7 @@ print(f"总案件数: {stats['total_cases']}")
 | P_fax_pages | 传真页数 | String(50) |
 | Q_case_details | 案件详情 | Text |
 
-### 系统字段
+### 系统field
 | 字段 | 描述 | 类型 |
 |------|------|------|
 | id | 主键 | Integer |
@@ -92,42 +92,42 @@ print(f"总案件数: {stats['total_cases']}")
 | updated_at | 更新时间 | DateTime |
 | is_active | 是否有效 | Boolean |
 
-## 🛠️ 管理工具
+## 🛠️ 管理utility
 
-### 命令行工具
+### 命令行utility
 ```bash
-# 显示统计信息
+# 显示statisticsinformation
 python database_manager.py stats
 
 # 列出案件
 python database_manager.py list 10
 
-# 搜索案件
+# search案件
 python database_manager.py search "关键词"
 
 # 查看案件详情
 python database_manager.py details 1
 
-# 导出数据
+# exportdata
 python database_manager.py export backup.json
 
 # 交互式管理
 python database_manager.py
 ```
 
-### API接口
+### APIinterface
 ```bash
-# 获取案件列表
+# get案件list
 GET /api/cases?limit=100&offset=0
 
-# 获取单个案件
+# get单个案件
 GET /api/cases/{case_id}
 
-# 搜索案件
+# search案件
 GET /api/cases/search?q=关键词
 ```
 
-## 📈 性能优化
+## 📈 performanceoptimize
 
 ### 索引建议
 ```sql
@@ -138,24 +138,24 @@ CREATE INDEX idx_file_type ON srr_cases(file_type);
 CREATE INDEX idx_created_at ON srr_cases(created_at);
 ```
 
-### 查询优化
+### queryoptimize
 - 使用limit限制结果数量
 - 避免SELECT *，只查询需要的字段
 - 使用索引字段进行搜索
 
-## 🔄 数据迁移
+## 🔄 data迁移
 
-### 导出数据
+### exportdata
 ```python
-# 导出所有案件
+# export所有案件
 cases = db.get_cases(limit=10000)
 with open('backup.json', 'w') as f:
     json.dump(cases, f, ensure_ascii=False, indent=2)
 ```
 
-### 导入数据
+### importdata
 ```python
-# 从JSON文件导入
+# 从JSONfileimport
 with open('backup.json', 'r') as f:
     cases = json.load(f)
     
@@ -165,7 +165,7 @@ for case in cases:
 
 ## 🛡️ 备份策略
 
-### 自动备份
+### automatic备份
 ```bash
 #!/bin/bash
 # 每日备份脚本
@@ -173,7 +173,7 @@ DATE=$(date +%Y%m%d)
 cp data/srr_cases.db backups/srr_cases_$DATE.db
 ```
 
-### 恢复数据
+### 恢复data
 ```bash
 # 从备份恢复
 cp backups/srr_cases_20250115.db data/srr_cases.db
@@ -185,25 +185,25 @@ cp backups/srr_cases_20250115.db data/srr_cases.db
 
 1. **数据库锁定**
    ```bash
-   # 检查是否有其他进程在使用数据库
+   # check是否有其他进程在使用data库
    lsof data/srr_cases.db
    ```
 
 2. **权限问题**
    ```bash
-   # 确保数据库文件可写
+   # 确保data库file可写
    chmod 664 data/srr_cases.db
    ```
 
 3. **磁盘空间不足**
    ```bash
-   # 检查磁盘空间
+   # check磁盘空间
    df -h
    ```
 
-### 日志查看
+### log查看
 ```python
-# 启用SQLAlchemy日志
+# 启用SQLAlchemylog
 import logging
 logging.basicConfig()
 logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)

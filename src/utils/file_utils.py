@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-文件处理工具模块
+fileprocessutilitymodule
 
-本模块提供智能的文件编码检测和安全文件读取功能，专门用于处理
-各种编码格式的文本文件，特别是中文文档和邮件内容。
+本module提供智能的fileencoding检测和securityfilereadfunction，专门用于process
+各种encoding格式的文本file，特别是中文文档和邮件内容。
 
-主要功能：
-1. 智能编码检测（支持BOM、chardet、常见编码）
-2. 安全文件读取（自动编码检测 + 错误处理）
-3. 多编码格式支持（UTF-8、GBK、GB2312、Big5等）
-4. 错误恢复机制（编码失败时的降级处理）
+mainfunction：
+1. 智能encoding检测（支持BOM、chardet、常见encoding）
+2. securityfileread（automaticencoding检测 + errorprocess）
+3. 多encoding格式支持（UTF-8、GBK、GB2312、Big5等）
+4. error恢复机制（encodingfailed时的降级process）
 
 技术特点：
-- 基于chardet库的智能编码检测
+- 基于chardet库的智能encoding检测
 - 支持BOM标记识别
-- 多级编码尝试机制
-- 错误忽略和容错处理
+- 多级encoding尝试机制
+- error忽略和容错process
 
 作者: Project3 Team
 版本: 2.0
@@ -29,24 +29,24 @@ from typing import Optional
 
 def detect_file_encoding(file_path: str) -> str:
     """
-    智能检测文件编码格式
+    智能检测文件encoding格式
     
     使用多级检测策略：
-    1. 检查BOM标记（UTF-8、UTF-16等）
+    1. checkBOM标记（UTF-8、UTF-16等）
     2. 使用chardet库进行智能检测
-    3. 尝试常见编码格式
+    3. 尝试常见encoding格式
     
     Args:
-        file_path (str): 文件路径
+        file_path (str): file path
         
     Returns:
-        str: 检测到的编码格式，默认返回'utf-8'
+        str: 检测到的encoding格式，默认return'utf-8'
         
     Example:
         >>> encoding = detect_file_encoding('test.txt')
-        >>> print(f"文件编码: {encoding}")
+        >>> print(f"文件encoding: {encoding}")
     """
-    # 1. 检查BOM标记
+    # 1. checkBOM标记
     try:
         with open(file_path, 'rb') as f:
             raw_data = f.read(4)
@@ -64,7 +64,7 @@ def detect_file_encoding(file_path: str) -> str:
             print("🔍 检测到UTF-16 BE BOM")
             return 'utf-16-be'
     except Exception as e:
-        print(f"⚠️ BOM检测失败: {e}")
+        print(f"⚠️ BOM检测failed: {e}")
     
     # 2. 使用chardet检测
     try:
@@ -75,59 +75,59 @@ def detect_file_encoding(file_path: str) -> str:
         if result and result['encoding']:
             confidence = result['confidence']
             encoding = result['encoding']
-            print(f"🔍 chardet检测到编码: {encoding} (置信度: {confidence:.2f})")
+            print(f"🔍 chardet检测到encoding: {encoding} (confidence: {confidence:.2f})")
             
-            # 如果置信度较高，直接使用
+            # 如果confidence较高，直接使用
             if confidence > 0.7:
                 return encoding
             
     except Exception as e:
-        print(f"⚠️ chardet检测失败: {e}")
+        print(f"⚠️ chardet检测failed: {e}")
     
-    # 3. 尝试常见编码
+    # 3. 尝试常见encoding
     common_encodings = ['utf-8', 'gbk', 'gb2312', 'utf-16', 'big5', 'latin1', 'cp1252']
     
     for encoding in common_encodings:
         try:
             with open(file_path, 'r', encoding=encoding) as f:
                 f.read(1024)  # 尝试读取前1024字符
-            print(f"🔍 成功验证编码: {encoding}")
+            print(f"🔍 successvalidateencoding: {encoding}")
             return encoding
         except (UnicodeDecodeError, UnicodeError):
             continue
         except Exception as e:
-            print(f"⚠️ 编码 {encoding} 测试失败: {e}")
+            print(f"⚠️ encoding {encoding} 测试failed: {e}")
             continue
     
-    # 4. 默认返回UTF-8
-    print("⚠️ 无法确定编码，使用UTF-8作为默认")
+    # 4. 默认returnUTF-8
+    print("⚠️ 无法确定encoding，使用UTF-8作为默认")
     return 'utf-8'
 
 
 def read_file_with_encoding(file_path: str) -> str:
     """
-    使用智能编码检测读取文件内容
+    使用智能encoding检测读取文件内容
     
     Args:
-        file_path (str): 文件路径
+        file_path (str): file path
         
     Returns:
         str: 文件内容
         
     Raises:
         FileNotFoundError: 文件不存在
-        Exception: 读取失败
+        Exception: 读取failed
     """
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"文件不存在: {file_path}")
     
-    # 检测编码
+    # 检测encoding
     detected_encoding = detect_file_encoding(file_path)
     
-    # 尝试使用检测到的编码读取
+    # 尝试使用检测到的encodingread
     encodings_to_try = [detected_encoding]
     
-    # 添加备用编码
+    # 添加备用encoding
     backup_encodings = ['utf-8', 'utf-8-sig', 'gbk', 'gb2312', 'latin1', 'cp1252']
     for enc in backup_encodings:
         if enc not in encodings_to_try:
@@ -139,38 +139,38 @@ def read_file_with_encoding(file_path: str) -> str:
         try:
             with open(file_path, 'r', encoding=encoding, errors='strict') as f:
                 content = f.read()
-            print(f"✅ 使用 {encoding} 编码读取文件成功，文本长度: {len(content)} 字符")
+            print(f"✅ 使用 {encoding} encoding读取文件success，文本长度: {len(content)} 字符")
             return content
             
         except UnicodeDecodeError as e:
             last_error = e
-            print(f"⚠️ 编码 {encoding} 读取失败: {e}")
+            print(f"⚠️ encoding {encoding} 读取failed: {e}")
             continue
         except Exception as e:
             last_error = e
-            print(f"⚠️ 使用编码 {encoding} 时发生错误: {e}")
+            print(f"⚠️ 使用encoding {encoding} 时发生error: {e}")
             continue
     
-    # 最后尝试忽略错误的方式读取
+    # 最后尝试忽略error的方式read
     try:
-        print("🔄 尝试忽略编码错误的方式读取...")
+        print("🔄 尝试忽略encodingerror的方式读取...")
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
-        print(f"⚠️ 使用错误忽略模式读取成功，文本长度: {len(content)} 字符")
+        print(f"⚠️ 使用error忽略模式读取success，文本长度: {len(content)} 字符")
         return content
     except Exception as e:
-        print(f"❌ 错误忽略模式也失败: {e}")
+        print(f"❌ error忽略模式也failed: {e}")
     
-    # 如果所有方法都失败，抛出异常
-    raise Exception(f"无法读取文件 {file_path}，最后错误: {last_error}")
+    # 如果所有method都failed，抛出exception
+    raise Exception(f"无法读取文件 {file_path}，最后error: {last_error}")
 
 
 def safe_file_read(file_path: str, default_content: str = "") -> str:
     """
-    安全读取文件，失败时返回默认内容
+    安全读取文件，failed时return默认内容
     
     Args:
-        file_path (str): 文件路径
+        file_path (str): file path
         default_content (str): 默认内容
         
     Returns:
@@ -179,5 +179,5 @@ def safe_file_read(file_path: str, default_content: str = "") -> str:
     try:
         return read_file_with_encoding(file_path)
     except Exception as e:
-        print(f"⚠️ 文件读取失败，使用默认内容: {e}")
+        print(f"⚠️ 文件读取failed，使用默认内容: {e}")
         return default_content

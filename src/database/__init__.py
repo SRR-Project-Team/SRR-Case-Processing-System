@@ -1,5 +1,5 @@
 """
-数据库模块
+data库module
 """
 from .manager import DatabaseManager, get_db_manager
 from .models import SRRCase, Base

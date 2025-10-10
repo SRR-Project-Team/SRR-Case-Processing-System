@@ -1,5 +1,5 @@
 """
-统一模型加载器
+统一modelload器
 """
 import json
 import pickle
@@ -7,11 +7,11 @@ import os
 from pathlib import Path
 
 class ModelLoader:
-    """模型加载器"""
+    """model加载器"""
     
     @staticmethod
     def load_ai_training_data():
-        """加载AI训练数据"""
+        """加载AItrainingdata"""
         data_file = 'models/ai_models/training_data.pkl'
         if os.path.exists(data_file):
             with open(data_file, 'rb') as f:
@@ -47,7 +47,7 @@ class ModelLoader:
     
     @staticmethod
     def get_model_metadata():
-        """获取模型元数据"""
+        """获取model元data"""
         metadata_file = 'models/metadata.json'
         if os.path.exists(metadata_file):
             with open(metadata_file, 'r', encoding='utf-8') as f:
@@ -56,7 +56,7 @@ class ModelLoader:
 
     @staticmethod
     def load_database_model():
-        """加载数据库模型"""
+        """加载data库model"""
         data_file = 'models/database_model.py'
         if os.path.exists(data_file):
             with open(data_file, 'rb') as f:

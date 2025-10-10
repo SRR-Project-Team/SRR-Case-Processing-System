@@ -15,7 +15,6 @@ project3/
 ├── 📄 README.md                  # Main project documentation
 ├── 📄 WORKFLOW_DESIGN.md         # System workflow design
 ├── 📄 PROJECT_STRUCTURE.md       # This file
-├── 📄 CONTRIBUTING.md            # Contribution guidelines
 └── 📄 start.py                   # System startup script
 ```
 
@@ -51,7 +50,8 @@ docs/
 ├── 📄 DATABASE_GUIDE.md          # Database operations
 ├── 📄 DEPLOYMENT_GUIDE.md        # Production deployment
 ├── 📄 DEVELOPMENT_GUIDE.md       # Development setup
-└── 📄 AI_FEATURES.md             # AI functionality details
+├── 📄 AI_FEATURES.md             # AI functionality details
+└── 📄 DESIGN_PROTOTYPE.md        # Interface design prototype
 ```
 
 ### Documentation Structure
@@ -61,6 +61,7 @@ docs/
 - **DEPLOYMENT_GUIDE.md**: Production deployment instructions
 - **DEVELOPMENT_GUIDE.md**: Development environment setup
 - **AI_FEATURES.md**: AI model details and usage
+- **DESIGN_PROTOTYPE.md**: Interface design specifications and prototype
 
 ## 🎨 Frontend (`frontend/`)
 
@@ -79,8 +80,11 @@ frontend/
 ```
 
 ### Frontend Components
-- **ChatbotInterface.tsx**: Main user interface
+- **ChatbotInterface.tsx**: Main integrated chat interface
+- **FileUploadModal.tsx**: File upload and management popup
+- **FileInfoModal.tsx**: File processing details popup
 - **ExtractedInfoDisplay.tsx**: Results display component
+- **UploadDetailsModal.tsx**: Upload details modal (legacy)
 - **api.ts**: API communication service
 - **config.ts**: Frontend configuration
 

@@ -96,23 +96,23 @@ export const queryCase = async (request: QueryRequest): Promise<string> => {
     // Simple query matching logic
     const lowerQuery = query.toLowerCase();
     
-    if (lowerQuery.includes('case') || lowerQuery.includes('案件')) {
+    if (lowerQuery.includes('case')) {
       return `Case Number: ${context.C_case_number || 'Unknown'}\nSource: ${context.B_source || 'Unknown'}`;
     }
     
-    if (lowerQuery.includes('date') || lowerQuery.includes('日期')) {
+    if (lowerQuery.includes('date')) {
       return `Date Received: ${context.A_date_received || 'Unknown'}\n10-Day Rule Due Date: ${context.K_10day_rule_due_date || 'Unknown'}`;
     }
     
-    if (lowerQuery.includes('contact') || lowerQuery.includes('联系')) {
+    if (lowerQuery.includes('contact')) {
       return `Caller: ${context.E_caller_name || 'Unknown'}\nContact Number: ${context.F_contact_no || 'Unknown'}`;
     }
     
-    if (lowerQuery.includes('slope') || lowerQuery.includes('斜坡')) {
+    if (lowerQuery.includes('slope')) {
       return `Slope Number: ${context.G_slope_no || 'Unknown'}\nLocation: ${context.H_location || 'Unknown'}`;
     }
     
-    if (lowerQuery.includes('nature') || lowerQuery.includes('性质')) {
+    if (lowerQuery.includes('nature')) {
       return `Nature of Request: ${context.I_nature_of_request || 'Unknown'}`;
     }
     

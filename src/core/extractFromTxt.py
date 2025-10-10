@@ -1,20 +1,20 @@
 """
-数据提取模块 - 从TXT文件中提取和解析SRR案件数据
+dataextractmodule - 从TXTfile中extract和parseSRR案件data
 
-本模块负责从SRR案件的TXT文件中提取结构化数据，包括：
-- 案件基本信息（日期、来源、类型等）
-- 联系人信息（姓名、电话）
-- 斜坡相关信息（编号、位置）
+本module负责从SRR案件的TXTfile中extract结构化data，包括：
+- 案件基本information（日期、来源、class型等）
+- 联系人information（姓名、电话）
+- 斜坡相关information（编号、位置）
 - 时间节点（截止日期、回复时间等）
-- 案件详情和附件信息
+- 案件详情和附件information
 
-主要功能：
-1. 解析各种日期格式
-2. 提取案件来源和类型
-3. 获取联系人和斜坡信息
-4. 计算各种截止日期
+mainfunction：
+1. parse各种日期格式
+2. extract案件来源和class型
+3. get联系人和斜坡information
+4. calculate各种截止日期
 5. 生成案件摘要和详情
-6. AI增强文本处理和OCR能力
+6. AI增强文本process和OCR能力
 
 作者: Project3 Team
 版本: 2.0 (AI增强版)
@@ -39,13 +39,13 @@ from utils.source_classifier import classify_source_smart
 
 def parse_date(date_str: str) -> Optional[datetime]:
     """
-    解析日期字符串为datetime对象（用于计算），失败返回None
+    解析日期字符串为datetimeobject（用于计算），failedreturnNone
     
     Args:
         date_str (str): 日期字符串，格式为 "YYYY-MM-DD HH:MM:SS"
         
     Returns:
-        Optional[datetime]: 解析成功返回datetime对象，失败返回None
+        Optional[datetime]: 解析successreturndatetimeobject，failedreturnNone
         
     Example:
         >>> parse_date("2024-01-15 10:30:00")
@@ -63,10 +63,10 @@ def parse_date(date_str: str) -> Optional[datetime]:
 
 def format_date(dt: Optional[datetime]) -> str:
     """
-    将datetime对象格式化为dd-MMM-yyyy格式，None返回空
+    将datetimeobject格式化为dd-MMM-yyyy格式，Nonereturn空
     
     Args:
-        dt (Optional[datetime]): 要格式化的datetime对象
+        dt (Optional[datetime]): 要格式化的datetimeobject
         
     Returns:
         str: dd-MMM-yyyy格式的日期字符串，如 "15-Jan-2024"
@@ -82,7 +82,7 @@ def format_date(dt: Optional[datetime]) -> str:
 
 def calculate_due_date(base_date: Optional[datetime], days: int) -> str:
     """
-    计算基准日期加days天后的日期，返回ISO字符串
+    计算基准日期加days天后的日期，returnISO字符串
     
     Args:
         base_date (Optional[datetime]): 基准日期
@@ -103,7 +103,7 @@ def calculate_due_date(base_date: Optional[datetime], days: int) -> str:
 
 def extract_1823_case_no(content: str) -> str:
     """
-    提取1823案件编号
+    extract1823案件编号
     
     从TXT内容中搜索"1823 case:"后面的内容作为案件编号
     
@@ -111,18 +111,18 @@ def extract_1823_case_no(content: str) -> str:
         content (str): TXT文件内容
         
     Returns:
-        str: 提取的案件编号，未找到返回空字符串
+        str: extract的案件编号，未找到return空字符串
         
     Example:
         >>> content = "1823 CASE: 3-8641924612"
         >>> extract_1823_case_no(content)
         "3-8641924612"
     """
-    # 搜索"1823 case:"后面的内容（不区分大小写）
+    # search"1823 case:"后面的内容（不区分大小写）
     match = re.search(r'1823\s+case:\s*([\w\-:]+)', content, re.IGNORECASE)
     if match:
         case_number = match.group(1).strip()
-        print(f"✅ 提取到1823案件编号: {case_number}")
+        print(f"✅ extract到1823案件编号: {case_number}")
         return case_number
     
     print("⚠️ 未找到1823案件编号")
@@ -131,9 +131,9 @@ def extract_1823_case_no(content: str) -> str:
 
 def get_source_from_content(content: str) -> str:
     """
-    提取来源B（根据内容中的渠道/提交方式判断）
+    extract来源B（根据内容中的渠道/commit方式判断）
     
-    从Channel字段判断案件来源，支持以下映射：
+    从Channelfield判断案件来源，支持以下映射：
     - Web -> 1823
     - RCC/ICC -> 保持原值
     
@@ -148,11 +148,11 @@ def get_source_from_content(content: str) -> str:
         >>> get_source_from_content(content)
         "1823"
     """
-    # 示例逻辑：从Channel字段或Contact History提取
+    # 示例逻辑：从Channelfield或Contact Historyextract
     channel_match = re.search(r'Channel :\s*(.*?)\n', content)
     if channel_match:
         channel = channel_match.group(1).strip()
-        # 映射规则：Web->1823，其他可能值RCC/ICC需根据实际文本调整
+        # map规则：Web->1823，其他可能valueRCC/ICC需根据实际文本调整
         if channel == "Web":
             return "1823"
         elif re.search(r'RCC|ICC', channel, re.IGNORECASE):
@@ -162,9 +162,9 @@ def get_source_from_content(content: str) -> str:
 
 def get_caller_info_by_source(content: str, source: str) -> Tuple[str, str]:
     """
-    根据来源B提取联系人姓名(E)和电话(F)
+    根据来源Bextract联系人姓名(E)和电话(F)
     
-    从CONTACT INFORMATION部分提取联系人的姓名和电话号码，
+    从CONTACT INFORMATION部分extract联系人的姓名和电话号码，
     支持RCC、ICC、1823等来源格式
     
     Args:
@@ -179,9 +179,9 @@ def get_caller_info_by_source(content: str, source: str) -> Tuple[str, str]:
         >>> get_caller_info_by_source(content, "1823")
         ("张 三", "12345678")
     """
-    # 不同来源的提取规则
+    # 不同来源的extract规则
     if source in ["RCC", "ICC", "1823"]:
-        # 从VI. CONTACT INFORMATION提取
+        # 从VI. CONTACT INFORMATIONextract
         last_name = re.search(r'Last Name :\s*(.*?)\n', content)
         first_name = re.search(r'First Name :\s*(.*?)\n', content)
         phone = re.search(r'Daytime No. :\s*(.*?)\n', content) or re.search(r'Mobile :\s*(.*?)\n', content)
@@ -194,33 +194,33 @@ def get_caller_info_by_source(content: str, source: str) -> Tuple[str, str]:
 
 
 def classify_case_type_ai_enhanced(case_data: dict) -> str:
-    """使用AI增强的案件类型分类 - 基于历史数据和SRR规则"""
+    """使用AI增强的案件class型classify - 基于历史data和SRR规则"""
     try:
-        print("🤖 使用AI分类案件类型...")
+        print("🤖 使用AIclassify案件class型...")
         
-        # 调用AI分类器
+        # 调用AIclassify器
         ai_result = classify_case_type_ai(case_data)
         
         predicted_type = ai_result.get('predicted_type', 'General')
         confidence = ai_result.get('confidence', 0.5)
         method = ai_result.get('method', 'unknown')
         
-        print(f"✅ AI分类完成: {predicted_type} (置信度: {confidence:.2f}, 方法: {method})")
+        print(f"✅ AIclassify完成: {predicted_type} (confidence: {confidence:.2f}, method: {method})")
         
         return predicted_type
         
     except Exception as e:
-        print(f"⚠️ AI分类失败，使用传统方法: {e}")
+        print(f"⚠️ AIclassifyfailed，使用传统method: {e}")
         return classify_case_type_traditional(case_data.get('content', ''))
 
 def classify_case_type_traditional(content: str) -> str:
-    """传统的案件类型分类方法（备用）"""
+    """传统的案件class型classifymethod（备用）"""
     desc = re.search(r'Description :\s*(.*?)\n', content, re.DOTALL)
     if not desc:
         return "General"
     desc_text = desc.group(1).lower()
     
-    # 关键词匹配示例
+    # 关key词match示例
     if "emergency" in desc_text or "紧急" in desc_text:
         return "Emergency"
     elif "urgent" in desc_text or "紧急" in desc_text:
@@ -234,33 +234,33 @@ def generate_nature_summary(content: str) -> str:
     生成请求性质摘要I - 使用NLP增强技术
     
     Args:
-        content (str): TXT文件内容（已AI增强处理）
+        content (str): TXT文件内容（已AI增强process）
         
     Returns:
         str: 请求性质摘要
     """
-    # 直接使用NLP增强技术进行智能总结
+    # 直接使用NLP增强技术进行智能summarize
     try:
         from nlp_enhanced_processor import get_nlp_enhanced_nature_of_request
         
-        # 检查是否有对应的邮件文件
+        # check是否有对应的邮件file
         email_content = None
-        # 尝试推断邮件文件路径
-        # 这里可以根据当前处理的文件名来推断
+        # 尝试推断邮件file path
+        # 这里可以根据当前process的file名来推断
         # 例如: 3-3YXXSJV.txt -> emailcontent_3-3YXXSJV.txt
         
-        # 使用NLP技术总结诉求内容
+        # 使用NLP技术summarize诉求内容
         nlp_summary = get_nlp_enhanced_nature_of_request(content, email_content)
         if nlp_summary:
-            print(f"✅ NLP增强摘要成功: {nlp_summary}")
+            print(f"✅ NLP增强摘要success: {nlp_summary}")
             return nlp_summary
             
     except ImportError:
-        print("⚠️ NLP增强处理器不可用，使用传统方法")
+        print("⚠️ NLP增强process器不可用，使用传统method")
     except Exception as e:
-        print(f"⚠️ NLP处理失败: {e}，使用传统方法")
+        print(f"⚠️ NLPprocessfailed: {e}，使用传统method")
     
-    # 传统方法作为备选
+    # 传统method作为备选
     if len(content) > 100:
         return content[:100] + "..."
     else:
@@ -269,7 +269,7 @@ def generate_nature_summary(content: str) -> str:
 
 def generate_nature_summary_from_original(original_content: str) -> str:
     """
-    从原始文件内容生成简洁的NLP总结
+    从原始文件内容生成简洁的NLPsummarize
     
     Args:
         original_content (str): 原始TXT文件内容
@@ -280,21 +280,21 @@ def generate_nature_summary_from_original(original_content: str) -> str:
     try:
         from nlp_enhanced_processor import get_nlp_enhanced_nature_of_request
         
-        # 检查是否有对应的邮件文件
+        # check是否有对应的邮件file
         email_content = None
         
-        # 使用原始内容进行NLP总结，生成简洁结果
+        # 使用原始内容进行NLPsummarize，生成简洁result
         nlp_summary = get_nlp_enhanced_nature_of_request(original_content, email_content)
         if nlp_summary:
-            print(f"✅ 原始内容NLP摘要成功: {nlp_summary}")
+            print(f"✅ 原始内容NLP摘要success: {nlp_summary}")
             return nlp_summary
             
     except ImportError:
-        print("⚠️ NLP增强处理器不可用，使用传统方法")
+        print("⚠️ NLP增强process器不可用，使用传统method")
     except Exception as e:
-        print(f"⚠️ NLP处理失败: {e}，使用传统方法")
+        print(f"⚠️ NLPprocessfailed: {e}，使用传统method")
     
-    # 传统方法作为备选
+    # 传统method作为备选
     if len(original_content) > 100:
         return original_content[:100] + "..."
     else:
@@ -302,18 +302,18 @@ def generate_nature_summary_from_original(original_content: str) -> str:
 
 
 def get_slope_no(content: str) -> str:
-    """提取斜坡编号G（从补充信息或描述中）"""
-    # 匹配"斜坡编号为XXX"或"[请提供斜坡牌...](XXX)"
+    """extract斜坡编号G（从补充information或描述中）"""
+    # match"斜坡编号为XXX"或"[请提供斜坡牌...](XXX)"
     slope_match = re.search(r'斜坡編號為([\w\-/]+)', content) or re.search(r'\((11sw-c/nd31)\)', content, re.IGNORECASE)
     return slope_match.group(1).strip().upper() if slope_match else ""
 
 
-# 注意：get_location_from_slope_no 函数现在从 slope_location_mapper 模块导入
+# 注意：get_location_from_slope_no function现在从 slope_location_mapper moduleimport
 
 
 def get_last_interim_reply_time(content: str) -> str:
-    """提取最后一个实质处理的Interim Reply时间"""
-    # 查找所有DUE DATE部分
+    """extract最后一个实质process的Interim Reply时间"""
+    # find所有DUE DATE部分
     due_date_sections = re.findall(r'DUE DATE:.*?(?=\d+st DUE DATE:|$)', content, re.DOTALL)
     
     if not due_date_sections:
@@ -330,8 +330,8 @@ def get_last_interim_reply_time(content: str) -> str:
 
 
 def get_last_final_reply_time(content: str) -> str:
-    """提取最后一个实质处理的Final Reply时间"""
-    # 查找所有DUE DATE部分
+    """extract最后一个实质process的Final Reply时间"""
+    # find所有DUE DATE部分
     due_date_sections = re.findall(r'DUE DATE:.*?(?=\d+st DUE DATE:|$)', content, re.DOTALL)
     
     if not due_date_sections:
@@ -348,31 +348,31 @@ def get_last_final_reply_time(content: str) -> str:
 
 
 def format_date_only(dt: Optional[datetime]) -> str:
-    """将datetime对象格式化为仅日期字符串（YYYY-MM-DD），None返回空"""
+    """将datetimeobject格式化为仅日期字符串（YYYY-MM-DD），Nonereturn空"""
     return dt.strftime("%Y-%m-%d") if dt else ""
 
 
 def format_time_only(dt: Optional[datetime]) -> str:
-    """将datetime对象格式化为仅时间字符串（HH:MM:SS），None返回空"""
+    """将datetimeobject格式化为仅时间字符串（HH:MM:SS），Nonereturn空"""
     return dt.strftime("%H:%M:%S") if dt else ""
 
 
-# 删除AI增强处理函数，直接使用原始文件内容
+# deleteAI增强processfunction，直接使用原始file内容
 
 
 def extract_case_data_from_txt(txt_path: str) -> dict:
     """
-    从TXT文件中提取所有案件数据，返回字典格式
+    从TXT文件中extract所有案件data，return字典格式
     
-    这是主要的数据提取函数，整合了所有提取逻辑，按照A-Q字段规则提取：
+    这是主要的dataextract函数，整合了所有extract逻辑，按照A-Qfield规则extract：
     - A: 案件接收日期
     - B: 来源
     - C: 1823案件号（仅RCC/ICC）
-    - D: 案件类型
+    - D: 案件class型
     - E: 来电人姓名
     - F: 联系电话
     - G: 斜坡编号
-    - H: 位置（从Excel数据获取）
+    - H: 位置（从Exceldata获取）
     - I: 请求性质摘要（使用NLP增强技术）
     - J: 事项主题
     - K: 10天规则截止日期
@@ -385,12 +385,12 @@ def extract_case_data_from_txt(txt_path: str) -> dict:
     - Q: 案件详情
     
     Args:
-        txt_path (str): TXT文件路径
+        txt_path (str): TXTfile path
         
     Returns:
-        dict: 包含所有A-Q字段的字典
+        dict: 包含所有A-Qfield的字典
     """
-    # 使用智能编码检测读取原始文件内容
+    # 使用智能encoding检测read原始file内容
     try:
         content = read_file_with_encoding(txt_path)
     except Exception as e:
@@ -401,10 +401,10 @@ def extract_case_data_from_txt(txt_path: str) -> dict:
                                    'L_icc_interim_due', 'M_icc_final_due', 'N_works_completion_due',
                                    'O1_fax_to_contractor', 'O2_email_send_time', 'P_fax_pages', 'Q_case_details']}
     
-    # 检查是否有对应的邮件文件
+    # check是否有对应的邮件file
     email_content = None
     try:
-        # 根据TXT文件名推断邮件文件路径
+        # 根据TXTfile名推断邮件file path
         # 例如: exampleInput/txt/3-3YXXSJV.txt -> exampleInput/txt/emailcontent_3-3YXXSJV.txt
         dir_path = os.path.dirname(txt_path)
         base_name = os.path.splitext(os.path.basename(txt_path))[0]
@@ -415,81 +415,81 @@ def extract_case_data_from_txt(txt_path: str) -> dict:
             try:
                 email_content = read_file_with_encoding(email_path)
             except Exception as e:
-                print(f"⚠️ 邮件文件读取失败: {e}")
+                print(f"⚠️ 邮件文件读取failed: {e}")
                 email_content = None
         else:
             print(f"⚠️ 未找到邮件文件: {email_path}")
             
     except Exception as e:
-        print(f"⚠️ 邮件文件处理失败: {e}")
+        print(f"⚠️ 邮件文件processfailed: {e}")
     
-    # 调用原有的提取逻辑，并传递邮件内容用于NLP处理
+    # 调用原有的extract逻辑，并传递邮件内容用于NLPprocess
     return extract_case_data_with_email(content, email_content, content, txt_path)
 
 
 def extract_case_data_with_email(content: str, email_content: str = None, original_content: str = None, txt_path: str = None) -> dict:
     """
-    从TXT内容中提取所有案件数据，支持邮件内容用于NLP处理和联系信息提取
+    从TXT内容中extract所有案件data，支持邮件内容用于NLPprocess和联系informationextract
     
     Args:
         content (str): TXT文件内容
         email_content (str): 邮件内容（可选）
-        original_content (str): 原始内容（用于NLP处理）
+        original_content (str): 原始内容（用于NLPprocess）
         
     Returns:
-        dict: 包含所有A-Q字段的字典
+        dict: 包含所有A-Qfield的字典
     """
-    # 调用原有的提取逻辑，传递文件路径
+    # 调用原有的extract逻辑，传递file path
     result = extract_case_data(content, original_content, email_content, txt_path)
     
-    # 如果有邮件内容，进行增强处理
+    # 如果有邮件内容，进行增强process
     if email_content:
-        # 1. 使用AI生成具体的请求摘要（优先使用邮件内容）
+        # 1. 使用AI生成具体的request摘要（优先使用邮件内容）
         try:
             print("🤖 使用AI从邮件内容生成请求摘要...")
             ai_summary = generate_ai_request_summary(content, email_content, 'txt')
-            if ai_summary and ai_summary != "无法提取具体请求内容":
+            if ai_summary and ai_summary != "无法extract具体请求内容":
                 result['I_nature_of_request'] = ai_summary
-                print(f"✅ AI邮件请求摘要生成成功: {ai_summary}")
+                print(f"✅ AI邮件请求摘要生成success: {ai_summary}")
             
         except Exception as e:
-            print(f"⚠️ AI邮件摘要生成失败: {e}，使用原有摘要")
+            print(f"⚠️ AI邮件摘要生成failed: {e}，使用原有摘要")
         
-        # 2. 从邮件内容提取联系信息（E_caller_name和F_contact_no）
+        # 2. 从邮件内容extract联系information（E_caller_name和F_contact_no）
         try:
             email_contact_info = get_email_contact_info(email_content, content)
             
-            # 如果邮件中有联系信息，优先使用邮件信息
+            # 如果邮件中有联系information，优先使用邮件information
             if email_contact_info.get('E_caller_name'):
                 result['E_caller_name'] = email_contact_info['E_caller_name']
-                print(f"✅ 从邮件提取联系人姓名: {email_contact_info['E_caller_name']}")
+                print(f"✅ 从邮件extract联系人姓名: {email_contact_info['E_caller_name']}")
             
             if email_contact_info.get('F_contact_no'):
                 result['F_contact_no'] = email_contact_info['F_contact_no']
-                print(f"✅ 从邮件提取联系电话: {email_contact_info['F_contact_no']}")
+                print(f"✅ 从邮件extract联系电话: {email_contact_info['F_contact_no']}")
                 
         except Exception as e:
-            print(f"⚠️ 邮件联系信息提取失败: {e}，使用原有信息")
+            print(f"⚠️ 邮件联系informationextractfailed: {e}，使用原有information")
     
     return result
 
 
-# 删除AI增强处理相关函数，直接使用原始文件内容
+# deleteAI增强process相关function，直接使用原始file内容
 
 
 def extract_case_data(content: str, original_content: str = None, email_content: str = None, file_path: str = None) -> dict:
     """
-    从TXT内容中提取所有案件数据，返回字典格式
+    从TXT内容中extract所有案件data，return字典格式
     
-    这是主要的数据提取函数，整合了所有提取逻辑，按照A-Q字段规则提取：
+    这是主要的dataextract函数，整合了所有extract逻辑，按照A-Qfield规则extract：
     - A: 案件接收日期
     - B: 来源
     - C: 1823案件号（仅RCC/ICC）
-    - D: 案件类型
+    - D: 案件class型
     - E: 来电人姓名
     - F: 联系电话
     - G: 斜坡编号
-    - H: 位置（从Excel数据获取）
+    - H: 位置（从Exceldata获取）
     - I: 请求性质摘要
     - J: 事项主题
     - K: 10天规则截止日期
@@ -505,7 +505,7 @@ def extract_case_data(content: str, original_content: str = None, email_content:
         content (str): TXT文件内容
         
     Returns:
-        dict: 包含所有A-Q字段的字典
+        dict: 包含所有A-Qfield的字典
         
     Example:
         >>> content = "Case Creation Date : 2024-01-15 10:30:00\\nChannel : Web..."
@@ -520,7 +520,7 @@ def extract_case_data(content: str, original_content: str = None, email_content:
     A_date = parse_date(creation_date_match.group(1)) if creation_date_match else None
     result['A_date_received'] = format_date(A_date)
     
-    # B: 来源（智能分类）
+    # B: 来源（智能classify）
     result['B_source'] = classify_source_smart(
         file_path=file_path, 
         content=content, 
@@ -528,11 +528,11 @@ def extract_case_data(content: str, original_content: str = None, email_content:
         file_type='txt'
     )
     
-    # C: 案件编号 (搜索所有文本中"1823 case:"后面的内容)
+    # C: 案件编号 (search所有文本中"1823 case:"后面的内容)
     result['C_case_number'] = extract_1823_case_no(content)
     
-    # D: 案件类型（使用AI分类）
-    # 准备AI分类所需的数据
+    # D: 案件class型（使用AIclassify）
+    # 准备AIclassify所需的data
     case_data_for_ai = {
         'I_nature_of_request': result.get('I_nature_of_request', ''),
         'J_subject_matter': result.get('J_subject_matter', ''),
@@ -550,31 +550,31 @@ def extract_case_data(content: str, original_content: str = None, email_content:
     # G: 斜坡编号
     result['G_slope_no'] = get_slope_no(content)
     
-    # H: 位置（从slope data.xlsx获取）
+    # H: 位置（从slope data.xlsxget）
     result['H_location'] = get_location_from_slope_no(result['G_slope_no'])
     
-    # I: 请求性质摘要 - 使用AI从邮件或内容中生成具体请求摘要
+    # I: request性质摘要 - 使用AI从邮件或内容中生成具体request摘要
     try:
         print("🤖 TXT使用AI生成请求摘要...")
         source_content = original_content if original_content else content
         ai_summary = generate_ai_request_summary(source_content, email_content, 'txt')
         result['I_nature_of_request'] = ai_summary
-        print(f"✅ TXT AI请求摘要生成成功: {ai_summary}")
+        print(f"✅ TXT AI请求摘要生成success: {ai_summary}")
     except Exception as e:
-        print(f"⚠️ TXT AI摘要生成失败，使用备用方法: {e}")
-        # 备用方法：使用原有的NLP处理
+        print(f"⚠️ TXT AI摘要生成failed，使用备用method: {e}")
+        # 备用method：使用原有的NLPprocess
         if original_content:
             result['I_nature_of_request'] = generate_nature_summary_from_original(original_content)
         else:
             result['I_nature_of_request'] = generate_nature_summary(content)
     
-    # J: 事项主题（根据历史记录和规则，示例逻辑）
+    # J: 事项主题（根据历史record和规则，示例逻辑）
     subject_match = re.search(r'Subject Matter :\s*(.*?)\n', content)
     extracted_subject = subject_match.group(1).strip() if subject_match else ""
     
-    # 使用AI分类器增强J_subject_matter
+    # 使用AIclassify器增强J_subject_matter
     try:
-        print("🤖 TXT使用AI分类主题...")
+        print("🤖 TXT使用AIclassify主题...")
         subject_data_for_ai = {
             'I_nature_of_request': result.get('I_nature_of_request', ''),
             'J_subject_matter': extracted_subject,
@@ -583,9 +583,9 @@ def extract_case_data(content: str, original_content: str = None, email_content:
         }
         ai_subject_result = classify_subject_matter_ai(subject_data_for_ai)
         result['J_subject_matter'] = ai_subject_result.get('predicted_category', extracted_subject or 'Others')
-        print(f"✅ TXT主题分类完成: {result['J_subject_matter']} (置信度: {ai_subject_result.get('confidence', 0):.2f})")
+        print(f"✅ TXT主题classify完成: {result['J_subject_matter']} (confidence: {ai_subject_result.get('confidence', 0):.2f})")
     except Exception as e:
-        print(f"⚠️ TXT主题分类失败，使用原始提取: {e}")
+        print(f"⚠️ TXT主题classifyfailed，使用原始extract: {e}")
         result['J_subject_matter'] = extracted_subject or "Others"
     
     # K: 10天规则截止日期（A+10天）
@@ -604,7 +604,7 @@ def extract_case_data(content: str, original_content: str = None, email_content:
     # O1: 发给承包商的传真日期（仅日期部分，通常同A）
     result['O1_fax_to_contractor'] = format_date_only(A_date)
     
-    # O2: 邮件发送时间（从书面联系详情提取时间部分，如果没有Transaction Time则使用Case Creation Date的时间）
+    # O2: 邮件发送时间（从书面联系详情extract时间部分，如果没有Transaction Time则使用Case Creation Date的时间）
     email_time_match = re.search(r'Transaction Time:\s*(.*?)\n', content)
     if email_time_match:
         email_dt = parse_date(email_time_match.group(1))
@@ -613,13 +613,13 @@ def extract_case_data(content: str, original_content: str = None, email_content:
         # 如果没有Transaction Time，使用Case Creation Date的时间部分
         result['O2_email_send_time'] = format_time_only(A_date)
     
-    # P: 传真页数（从附件信息提取）
+    # P: 传真页数（从附件informationextract）
     file_upload_match = re.search(r'File upload:\s*(\d+)\s*file', content)
     result['P_fax_pages'] = f"1 + {file_upload_match.group(1)}" if file_upload_match else ""
     
     # Q: 案件详情（带建议截止日期）
     # 整合描述和建议截止日期
-    # 重用I列的结果，避免重复NLP处理
+    # 重用I列的result，避免duplicateNLPprocess
     detail_text = result['I_nature_of_request']
     if result['N_works_completion_due']:
         detail_text += f"\n建议工程完成截止日期: {result['N_works_completion_due']}"

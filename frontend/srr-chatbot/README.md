@@ -1,176 +1,176 @@
-# SRR案件处理聊天机器人界面
+# SRR Case Processing Chatbot Interface
 
-这是一个基于React和TypeScript开发的聊天机器人风格界面，用于SRR案件文件处理和信息提取。
+This is a chatbot-style interface developed with React and TypeScript for SRR case file processing and information extraction.
 
-## 功能特性
+## Features
 
-### 🤖 聊天机器人界面
-- 现代化的聊天界面设计
-- 实时消息交互
-- 智能响应和查询处理
-- 用户友好的对话体验
+### 🤖 Chatbot Interface
+- Modern chat interface design
+- Real-time message interaction
+- Intelligent response and query processing
+- User-friendly conversation experience
 
-### 📁 文件处理功能
-- **拖拽上传**: 支持拖拽文件到指定区域
-- **文件类型支持**: PDF和TXT文件
-- **文件验证**: 自动验证文件类型和大小
-- **实时处理**: 异步文件处理和状态反馈
+### 📁 File Processing
+- **Drag & Drop Upload**: Supports dragging files to designated areas
+- **File Type Support**: PDF and TXT files
+- **File Validation**: Automatic file type and size validation
+- **Real-time Processing**: Asynchronous file processing with status feedback
 
-### 📊 信息展示
-- **结构化展示**: A-Q字段完整展示
-- **分类组织**: 按功能分组显示信息
-- **视觉标识**: 使用图标和颜色区分不同类型信息
-- **空值处理**: 优雅处理缺失数据
+### 📊 Information Display
+- **Structured Display**: Complete A-Q field display
+- **Categorized Organization**: Information grouped by function
+- **Visual Indicators**: Uses icons and colors to distinguish different types of information
+- **Null Value Handling**: Graceful handling of missing data
 
-### 🔍 智能查询
-- **上下文查询**: 基于已提取信息的智能问答
-- **关键词匹配**: 支持多种查询模式
-- **即时响应**: 快速查询响应
-- **查询建议**: 提供查询示例和建议
+### 🔍 Smart Query
+- **Contextual Query**: Intelligent Q&A based on extracted information
+- **Keyword Matching**: Supports multiple query patterns
+- **Instant Response**: Fast query responses
+- **Query Suggestions**: Provides query examples and suggestions
 
-### 📱 响应式设计
-- **移动端适配**: 完全响应式布局
-- **跨设备兼容**: 支持桌面端和移动端
-- **触摸友好**: 优化的触摸交互体验
+### 📱 Responsive Design
+- **Mobile Adaptation**: Fully responsive layout
+- **Cross-device Compatibility**: Supports desktop and mobile
+- **Touch-friendly**: Optimized touch interaction experience
 
-## 技术栈
+## Tech Stack
 
-- **React 18**: 现代React框架
-- **TypeScript**: 类型安全的JavaScript
-- **React Dropzone**: 文件拖拽上传
-- **Axios**: HTTP客户端
-- **Lucide React**: 现代图标库
-- **CSS3**: 现代CSS样式和动画
+- **React 18**: Modern React framework
+- **TypeScript**: Type-safe JavaScript
+- **React Dropzone**: File drag and drop upload
+- **Axios**: HTTP client
+- **Lucide React**: Modern icon library
+- **CSS3**: Modern CSS styles and animations
 
-## 项目结构
+## Project Structure
 
 ```
 src/
-├── components/           # React组件
-│   ├── ChatbotInterface.tsx    # 主聊天界面
-│   └── ExtractedInfoDisplay.tsx # 信息展示组件
-├── services/            # API服务
-│   └── api.ts          # API调用封装
-├── types/              # TypeScript类型定义
-│   └── index.ts        # 通用类型
-├── config.ts           # 应用配置
-├── App.tsx             # 主应用组件
-├── App.css             # 全局样式
-└── index.tsx           # 应用入口
+├── components/           # React components
+│   ├── ChatbotInterface.tsx    # Main chat interface
+│   └── ExtractedInfoDisplay.tsx # Information display component
+├── services/            # API services
+│   └── api.ts          # API call encapsulation
+├── types/              # TypeScript type definitions
+│   └── index.ts        # Common types
+├── config.ts           # Application configuration
+├── App.tsx             # Main application component
+├── App.css             # Global styles
+└── index.tsx           # Application entry point
 ```
 
-## 安装和运行
+## Installation and Setup
 
-### 前置要求
+### Prerequisites
 - Node.js 16+
-- npm 或 yarn
+- npm or yarn
 
-### 安装依赖
+### Install Dependencies
 ```bash
 npm install
 ```
 
-### 启动开发服务器
+### Start Development Server
 ```bash
 npm start
 ```
 
-应用将在 http://localhost:3000 启动
+Application will start at http://localhost:3000
 
-### 构建生产版本
+### Build for Production
 ```bash
 npm run build
 ```
 
-## API集成
+## API Integration
 
-应用需要连接到后端API服务器，默认地址为 `http://localhost:8000`
+The application needs to connect to a backend API server, default address is `http://localhost:8000`
 
-### API端点
-- `POST /api/process-srr-file` - 文件处理
-- `GET /health` - 健康检查
+### API Endpoints
+- `POST /api/process-srr-file` - File processing
+- `GET /health` - Health check
 
-### 环境配置
-可以通过环境变量配置API地址：
+### Environment Configuration
+API address can be configured through environment variables:
 ```bash
 REACT_APP_API_URL=http://your-api-server:8000
 ```
 
-## 使用说明
+## Usage Guide
 
-### 1. 文件上传
-- 将PDF或TXT文件拖拽到右侧上传区域
-- 或点击上传区域选择文件
-- 支持的格式：PDF、TXT
-- 最大文件大小：10MB
+### 1. File Upload
+- Drag PDF or TXT files to the right upload area
+- Or click the upload area to select files
+- Supported formats: PDF, TXT
+- Maximum file size: 10MB
 
-### 2. 信息查看
-- 文件处理完成后，右侧会显示提取的信息
-- 信息按A-Q字段分类展示
-- 空值会显示为"未提供"
+### 2. Information Viewing
+- After file processing is complete, extracted information will be displayed on the right
+- Information is displayed categorized by A-Q fields
+- Empty values will be shown as "Not provided"
 
-### 3. 智能查询
-- 在底部输入框输入问题
-- 支持的查询类型：
-  - 案件基本信息
-  - 联系人信息
-  - 斜坡相关信息
-  - 重要日期
-  - 案件性质
+### 3. Smart Query
+- Enter questions in the bottom input field
+- Supported query types:
+  - Basic case information
+  - Contact information
+  - Slope-related information
+  - Important dates
+  - Case nature
 
-### 4. 查询示例
-- "这个案件的基本信息是什么？"
-- "联系人信息"
-- "斜坡相关信息"
-- "重要日期"
-- "案件性质"
+### 4. Query Examples
+- "What is the basic information of this case?"
+- "Contact information"
+- "Slope-related information"
+- "Important dates"
+- "Case nature"
 
-## 设计特色
+## Design Features
 
-### 🎨 视觉设计
-- **现代渐变**: 使用紫色渐变主题
-- **卡片设计**: 信息卡片化展示
-- **图标系统**: 统一的图标语言
-- **动画效果**: 流畅的交互动画
+### 🎨 Visual Design
+- **Modern Gradient**: Uses purple gradient theme
+- **Card Design**: Information displayed in card format
+- **Icon System**: Unified icon language
+- **Animation Effects**: Smooth interaction animations
 
-### 💬 聊天体验
-- **对话气泡**: 区分用户和机器人消息
-- **头像系统**: 可视化对话参与者
-- **时间戳**: 消息时间记录
-- **状态指示**: 加载和处理状态
+### 💬 Chat Experience
+- **Message Bubbles**: Distinguishes user and bot messages
+- **Avatar System**: Visual representation of conversation participants
+- **Timestamps**: Message time records
+- **Status Indicators**: Loading and processing states
 
-### 📋 信息架构
-- **分层展示**: 重要信息优先展示
-- **分组组织**: 相关信息分组
-- **状态标识**: 清晰的状态指示
-- **空值处理**: 优雅的缺失数据处理
+### 📋 Information Architecture
+- **Layered Display**: Important information displayed first
+- **Grouped Organization**: Related information grouped together
+- **Status Indicators**: Clear status indications
+- **Null Value Handling**: Graceful handling of missing data
 
-## 浏览器支持
+## Browser Support
 
 - Chrome 80+
 - Firefox 75+
 - Safari 13+
 - Edge 80+
 
-## 开发指南
+## Development Guide
 
-### 添加新的查询类型
-1. 在 `services/api.ts` 的 `queryCase` 函数中添加新的查询逻辑
-2. 更新 `types/index.ts` 中的相关类型定义
-3. 在聊天界面中添加相应的查询建议
+### Adding New Query Types
+1. Add new query logic in the `queryCase` function in `services/api.ts`
+2. Update related type definitions in `types/index.ts`
+3. Add corresponding query suggestions in the chat interface
 
-### 自定义样式
-主要样式文件在 `src/App.css`，包含：
-- 聊天界面样式
-- 文件上传区域样式
-- 信息展示样式
-- 响应式媒体查询
+### Customizing Styles
+Main style file is in `src/App.css`, including:
+- Chat interface styles
+- File upload area styles
+- Information display styles
+- Responsive media queries
 
-### 扩展文件类型支持
-1. 更新 `config.ts` 中的 `supportedFileTypes`
-2. 修改 `ChatbotInterface.tsx` 中的文件验证逻辑
-3. 确保后端API支持新的文件类型
+### Extending File Type Support
+1. Update `supportedFileTypes` in `config.ts`
+2. Modify file validation logic in `ChatbotInterface.tsx`
+3. Ensure backend API supports new file types
 
-## 许可证
+## License
 
 MIT License

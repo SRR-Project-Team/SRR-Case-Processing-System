@@ -1,8 +1,8 @@
 """
-大模型API服务模块
+LLM API Service Module
 
-提供与大模型API的交互功能，包括文本总结、问答等。
-使用火山引擎官方SDK。
+Provides interaction functionality with Large Language Model APIs, including text summarization, Q&A, etc.
+Uses Volcengine official SDK.
 """
 
 import os
@@ -12,190 +12,191 @@ from volcenginesdkarkruntime import Ark
 
 class LLMService:
     """
-    大模型API服务类
+    LLM API Service Class
     
-    提供与大模型API的交互功能，包括文本总结、问答等。
-    使用火山引擎官方SDK。
+    Provides interaction functionality with Large Language Model APIs, including text summarization, Q&A, etc.
+    Uses Volcengine official SDK.
     """
     
     def __init__(self, api_key: str):
         """
-        初始化LLM服务
+        Initialize LLM Service
         
         Args:
-            api_key: API密钥
+            api_key: API key
         """
-        self.api_key = api_key
+        # self.api_key = api_key
+        self.api_key = ''
         self.logger = logging.getLogger(__name__)
         
-        # 验证API密钥
+        # Validate API key
         if not self.api_key:
-            self.logger.warning("⚠️ API密钥未设置，AI总结功能将不可用")
+            self.logger.warning("⚠️ API key not set, AI summarization will be unavailable")
             self.client = None
         else:
-            # 初始化火山引擎客户端
+            # Initialize Volcengine client
             try:
                 self.client = Ark(api_key=self.api_key)
-                self.logger.info("✅ 火山引擎LLM客户端初始化成功")
+                self.logger.info("✅ Volcengine LLM client initialized successfully")
             except Exception as e:
-                self.logger.error(f"❌ 火山引擎LLM客户端初始化失败: {e}")
+                self.logger.error(f"❌ Volcengine LLM client initialization failed: {e}")
                 self.client = None
     
     def summarize_text(self, text: str, max_length: int = 600) -> Optional[str]:
         """
-        使用大模型API对文本进行一句话总结
+        Use LLM API to summarize text in one sentence
         
         Args:
-            text: 需要总结的文本
-            max_length: 总结的最大长度
+            text: Text to be summarized
+            max_length: Maximum length of the summary
             
         Returns:
-            总结结果，失败时返回None
+            Summary result, returns None on failure
         """
         try:
-            # 检查API密钥和客户端
+            # Check API key and client
             if not self.api_key or not self.client:
-                self.logger.warning("⚠️ API密钥未设置或客户端未初始化，无法生成AI总结")
+                self.logger.warning("⚠️ API key not set or client not initialized, cannot generate AI summary")
                 return None
             
-            # 构建请求消息
+            # Build request message
             message = f'''Summarize the text with key elements(case type, caller name and etc) in a natural and fluent sentence. 
             In addition, the summary should include the short answer of the duration of the case open up to end date or now, 
             the number of departments it has been handled by, and whether it falls under the responsibility of the slope and tree maintenance department.
             No more than {max_length} words.:\n\n{text[:9000]} '''  # 限制文本长度
             
-            # 调用火山引擎API
+            # Call Volcengine API
             response = self.client.chat.completions.create(
                 model="doubao-seed-1-6-flash-250828",
                 messages=[{"content": message, "role": "user"}]
             )
             
-            # 提取响应内容
+            # Extract response content
             if response and response.choices and len(response.choices) > 0:
                 content = response.choices[0].message.content
                 if content and content.strip():
-                    self.logger.info("✅ AI总结生成成功")
+                    self.logger.info("✅ AI summary generated successfully")
                     return content.strip()
             
-            self.logger.warning("⚠️ API响应为空或无效")
+            self.logger.warning("⚠️ API response is empty or invalid")
             return None
             
         except Exception as e:
-            self.logger.error(f"❌ AI总结生成失败: {e}")
+            self.logger.error(f"❌ AI summary generation failed: {e}")
             return None
 
     def summarize_file(self, file_path: str, max_length: int = 100) -> Optional[str]:
         """
-        使用大模型API对文件进行总结
+        Use LLM API to summarize file
         
         Args:
-            file_path: 文件路径
-            max_length: 总结的最大长度
+            file_path: File path
+            max_length: Maximum length of summary
             
         Returns:
-            总结结果，失败时返回None
+            Summary result, returns None on failure
         """
         try:
-            # 检查API密钥和客户端
+            # Check API key and client
             if not self.api_key or not self.client:
-                self.logger.warning("⚠️ API密钥未设置或客户端未初始化，无法生成AI总结")
+                self.logger.warning("⚠️ API key not set or client not initialized, cannot generate AI summary")
                 return None
             
-            # 根据文件类型提取内容
+            # Extract content based on file type
             file_content = self._extract_file_content(file_path)
             if not file_content:
-                self.logger.error(f"❌ 无法提取文件内容: {file_path}")
+                self.logger.error(f"❌ Unable to extract file content: {file_path}")
                 return None
             
-            # 调用文本总结方法
+            # Call text summarization method
             return self.summarize_text(file_content, max_length)
             
         except Exception as e:
-            self.logger.error(f"❌ 文件总结处理异常: {e}")
+            self.logger.error(f"❌ File summarization processing exception: {e}")
             return None
     
     def _extract_file_content(self, file_path: str) -> Optional[str]:
         """
-        根据文件类型提取内容
+        Extract content based on file type
         
         Args:
-            file_path: 文件路径
+            file_path: File path
             
         Returns:
-            文件内容，失败时返回None
+            File content, returns None on failure
         """
         try:
             if not os.path.exists(file_path):
-                self.logger.error(f"❌ 文件不存在: {file_path}")
+                self.logger.error(f"❌ File does not exist: {file_path}")
                 return None
             
             file_extension = os.path.splitext(file_path)[1].lower()
             
             if file_extension == '.txt':
-                # 处理文本文件
+                # Process text file
                 return self._extract_txt_content(file_path)
                 
             elif file_extension == '.pdf':
-                # 处理PDF文件
+                # Process PDF file
                 return self._extract_pdf_content(file_path)
                 
             else:
-                self.logger.warning(f"⚠️ 不支持的文件类型: {file_extension}")
+                self.logger.warning(f"⚠️ Unsupported file type: {file_extension}")
                 return None
                 
         except Exception as e:
-            self.logger.error(f"❌ 文件内容提取异常: {e}")
+            self.logger.error(f"❌ File content extraction exception: {e}")
             return None
     
     def _extract_txt_content(self, file_path: str) -> Optional[str]:
         """
-        提取TXT文件内容
+        Extract TXT file content
         
         Args:
-            file_path: TXT文件路径
+            file_path: TXT file path
             
         Returns:
-            文件内容，失败时返回None
+            File content, returns None on failure
         """
         try:
             from ..utils.file_utils import read_file_with_encoding
             return read_file_with_encoding(file_path)
         except Exception as e:
-            self.logger.error(f"❌ TXT文件内容提取失败: {e}")
+            self.logger.error(f"❌ TXT file content extraction failed: {e}")
             return None
     
     def _extract_pdf_content(self, file_path: str) -> Optional[str]:
         """
-        提取PDF文件内容
+        Extract PDF file content
         
         Args:
-            file_path: PDF文件路径
+            file_path: PDF file path
             
         Returns:
-            PDF文本内容，失败时返回None
+            PDF text content, returns None on failure
         """
         try:
-            # 首先尝试使用项目中已有的PDF处理逻辑
+            # First try to use existing PDF processing logic in the project
             from ..core.extractFromTMO import extract_text_from_pdf_fast
             from ..core.extractFromRCC import extract_text_with_ocr_fast
             
-            # 尝试使用TMO模块的快速文本提取
+            # Try to use TMO module fast text extraction
             try:
                 text = extract_text_from_pdf_fast(file_path)
                 if text and text.strip():
                     return text.strip()
             except Exception as e:
-                self.logger.warning(f"⚠️ TMO快速PDF提取失败: {e}")
+                self.logger.warning(f"⚠️ TMO fast PDF extraction failed: {e}")
             
-            # 尝试使用RCC模块的OCR提取
+            # Try to use RCC module OCR extraction
             try:
                 text = extract_text_with_ocr_fast(file_path)
                 if text and text.strip():
                     return text.strip()
             except Exception as e:
-                self.logger.warning(f"⚠️ RCC OCR提取失败: {e}")
+                self.logger.warning(f"⚠️ RCC OCR extraction failed: {e}")
             
-            # 如果都失败，使用基础的PyPDF2
+            # If all fail, use basic PyPDF2
             try:
                 import PyPDF2
                 with open(file_path, 'rb') as file:
@@ -205,35 +206,35 @@ class LLMService:
                         text += page.extract_text() + "\n"
                     return text.strip()
             except Exception as e:
-                self.logger.error(f"❌ PyPDF2提取失败: {e}")
+                self.logger.error(f"❌ PyPDF2 extraction failed: {e}")
                 return None
                 
         except Exception as e:
-            self.logger.error(f"❌ PDF内容提取异常: {e}")
+            self.logger.error(f"❌ PDF content extraction exception: {e}")
             return None
 
 
-# 全局LLM服务实例
+# Global LLM service instance
 _llm_service = None
 
 def init_llm_service(api_key: str):
     """
-    初始化全局LLM服务实例
+    Initialize global LLM service instance
     
     Args:
-        api_key: API密钥
+        api_key: API key
     """
     global _llm_service
     _llm_service = LLMService(api_key)
 
 def get_llm_service() -> LLMService:
     """
-    获取全局LLM服务实例
+    Get global LLM service instance
     
     Returns:
-        LLMService实例
+        LLMService instance
     """
     global _llm_service
     if _llm_service is None:
-        raise RuntimeError("LLM服务未初始化，请先调用init_llm_service()")
+        raise RuntimeError("LLM service not initialized, please call init_llm_service() first")
     return _llm_service

@@ -1,5 +1,5 @@
 """
-数据库管理器
+data库manager
 """
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -9,44 +9,44 @@ from datetime import datetime
 import pytz
 
 class DatabaseManager:
-    """数据库管理器"""
+    """data库管理器"""
     
     def __init__(self, db_path="data/srr_cases.db"):
         # 确保使用绝对路径，避免相对路径问题
         if not os.path.isabs(db_path):
-            # 获取项目根目录
+            # get项目根目录
             current_dir = os.path.dirname(os.path.abspath(__file__))
             project_root = os.path.dirname(os.path.dirname(current_dir))
             db_path = os.path.join(project_root, db_path)
         
-        # 确保数据目录存在
+        # 确保data目录存在
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         
         self.db_path = db_path
         self.engine = create_engine(f"sqlite:///{db_path}", echo=False)
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         
-        # 创建表
+        # createtable
         Base.metadata.create_all(bind=self.engine)
-        print(f"✅ 数据库初始化完成: {db_path}")
+        print(f"✅ data库initialize完成: {db_path}")
     
     def get_session(self):
-        """获取数据库会话"""
+        """获取data库session"""
         return self.SessionLocal()
     
     def save_case(self, case_data: dict) -> int:
-        """保存案件数据"""
+        """保存案件data"""
         session = self.get_session()
         try:
             case = SRRCase(**case_data)
             session.add(case)
             session.commit()
             case_id = case.id
-            print(f"✅ 案件保存成功，ID: {case_id}")
+            print(f"✅ 案件保存success，ID: {case_id}")
             return case_id
         except Exception as e:
             session.rollback()
-            print(f"❌ 案件保存失败: {e}")
+            print(f"❌ 案件保存failed: {e}")
             raise e
         finally:
             session.close()
@@ -63,7 +63,7 @@ class DatabaseManager:
             session.close()
     
     def get_cases(self, limit=100, offset=0) -> list:
-        """获取案件列表"""
+        """获取案件列table"""
         session = self.get_session()
         try:
             cases = session.query(SRRCase).filter(SRRCase.is_active == True)\
@@ -89,7 +89,7 @@ class DatabaseManager:
             session.close()
     
     def get_stats(self) -> dict:
-        """获取统计信息"""
+        """获取统计information"""
         session = self.get_session()
         try:
             total_cases = session.query(SRRCase).filter(SRRCase.is_active == True).count()
@@ -107,7 +107,7 @@ class DatabaseManager:
             session.close()
     
     def _case_to_dict(self, case) -> dict:
-        """将案件对象转换为字典"""
+        """将案件object转换为字典"""
         return {
             'id': case.id,
             'A_date_received': case.A_date_received,
@@ -150,11 +150,11 @@ class DatabaseManager:
         
         return beijing_time.strftime('%Y-%m-%d %H:%M:%S CST')
 
-# 全局数据库管理器实例
+# 全局data库managerinstance
 _db_manager = None
 
 def get_db_manager():
-    """获取数据库管理器实例"""
+    """获取data库管理器instance"""
     global _db_manager
     if _db_manager is None:
         _db_manager = DatabaseManager()

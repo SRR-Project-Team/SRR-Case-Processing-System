@@ -1,20 +1,20 @@
 """
-AI案件类型分类器模块
+AI案件class型classify器module
 
-本模块实现基于机器学习和规则匹配的智能案件类型分类系统，能够自动将SRR案件
-分类为Emergency（紧急）、Urgent（紧急）或General（一般）三种类型。
+本module实现基于machine learning和规则match的智能案件class型classify系统，能够automatic将SRR案件
+classify为Emergency（紧急）、Urgent（紧急）或General（一般）三种class型。
 
-主要功能：
-1. 基于历史案件数据进行机器学习训练
-2. 结合SRR规则文档进行规则匹配
-3. 使用混合方法（ML + 规则）提高分类准确率
-4. 支持模型缓存和增量学习
-5. 提供详细的分类报告和置信度评估
+mainfunction：
+1. 基于历史案件data进行machine learningtraining
+2. 结合SRR规则文档进行规则match
+3. 使用混合method（ML + 规则）提高classifyaccuracy
+4. 支持modelcache和增量学习
+5. 提供详细的classify报告和confidenceevaluate
 
 技术实现：
-- 机器学习：RandomForestClassifier + TF-IDF向量化
-- 规则匹配：基于关键词和语义的规则引擎
-- 数据来源：SRR历史数据 + 投诉案件数据 + SRR规则文档
+- machine learning：RandomForestClassifier + TF-IDFvector化
+- 规则match：基于关key词和语义的规则引擎
+- data来源：SRR历史data + 投诉案件data + SRR规则文档
 
 作者: Project3 Team
 版本: 2.0
@@ -24,15 +24,15 @@ import pandas as pd
 
 def load_srr_rules():
     """
-    加载SRR规则文档数据
+    加载SRR规则文档data
     
-    从预处理的JSON文件中加载SRR规则内容，这些规则用于规则匹配分类。
-    规则文件包含从SRR rules.docx文档中提取的关键词和分类标准。
+    从预process的JSON文件中加载SRR规则内容，这些规则用于规则匹配classify。
+    规则文件包含从SRR rules.docx文档中extract的关键词和classify标准。
     
     Returns:
         dict: 包含规则内容的字典
         {
-            'content': list,  # 规则文本内容列表
+            'content': list,  # 规则text content列table
             'paragraphs': int  # 段落数量
         }
         
@@ -54,19 +54,19 @@ def load_srr_rules():
 
 def load_training_data():
     """
-    加载机器学习训练数据
+    加载机器学习trainingdata
     
-    从预处理的pickle文件中加载历史案件数据，用于训练分类模型。
-    数据包含SRR案件数据和投诉案件数据，已进行清洗和预处理。
+    从预process的pickle文件中加载历史案件data，用于trainingclassifymodel。
+    data包含SRR案件data和投诉案件data，已进行清洗和预process。
     
     Returns:
         tuple: (srr_data, complaints_data)
-            - srr_data (list): SRR案件数据列表
-            - complaints_data (list): 投诉案件数据列表
+            - srr_data (list): SRR案件data列table
+            - complaints_data (list): 投诉案件data列table
             
     Example:
         >>> srr_data, complaints_data = load_training_data()
-        >>> print(f"SRR数据: {len(srr_data)}条, 投诉数据: {len(complaints_data)}条")
+        >>> print(f"SRRdata: {len(srr_data)}条, 投诉data: {len(complaints_data)}条")
     """
     import pickle
     import os
@@ -77,7 +77,7 @@ def load_training_data():
             data = pickle.load(f)
         return data.get('srr_data', []), data.get('complaints_data', [])
     else:
-        print("⚠️ 训练数据文件不存在")
+        print("⚠️ trainingdata文件不存在")
         return [], []
 
 import numpy as np
@@ -95,7 +95,7 @@ warnings.filterwarnings('ignore')
 from .ai_model_cache import get_cached_model, cache_model
 
 class SRRCaseTypeClassifier:
-    """SRR案件类型AI分类器"""
+    """SRR案件class型AIclassify器"""
     
     def __init__(self, data_path: str = "models"):
         self.data_path = data_path
@@ -106,38 +106,38 @@ class SRRCaseTypeClassifier:
         self.classification_rules = {}
         self.historical_data = None
         
-        # 紧急关键词 (Emergency indicators)
+        # 紧急关key词 (Emergency indicators)
         self.emergency_keywords = [
             'collapse', 'collapsed', 'falling', 'fallen', 'immediate danger', 
             'urgent repair', 'safety risk', 'hazard', 'emergency', 'critical',
             '倒塌', '崩塌', '緊急', '危險', '立即', '安全風險', '嚴重', '緊急修復'
         ]
         
-        # 紧急案件类型
+        # 紧急案件class型
         self.urgent_types = [
             'hazardous tree', 'fallen tree', 'drainage blockage', 'water seepage',
             'remove debris', 'safety concern', 'structural damage'
         ]
         
-        # 一般案件类型  
+        # 一般案件class型  
         self.general_types = [
             'grass cutting', 'tree trimming', 'pruning', 'maintenance',
             'routine inspection', 'general enquiry', 'information request'
         ]
         
     def load_historical_data(self) -> pd.DataFrame:
-        """加载历史数据"""
+        """加载历史data"""
         try:
-            # 加载SRR历史数据
+            # loadSRR历史data
             csv_path = os.path.join(self.data_path, "SRR data 2021-2024.csv")
             df = pd.read_csv(csv_path, encoding='latin1')
             
-            print(f"✅ 加载历史数据成功: {len(df)} 条记录")
+            print(f"✅ 加载历史datasuccess: {len(df)} 条record")
             
-            # 清理列名
+            # cleanup列名
             df.columns = [col.strip().replace('\n', ' ') for col in df.columns]
             
-            # 找到类型列
+            # 找到class型列
             type_col = None
             for col in df.columns:
                 if 'type' in col.lower() and ('emergency' in col.lower() or 'urgent' in col.lower()):
@@ -145,18 +145,18 @@ class SRRCaseTypeClassifier:
                     break
             
             if type_col:
-                # 清理类型数据
+                # cleanupclass型data
                 df[type_col] = df[type_col].fillna('General')
                 df = df[df[type_col].isin(['Emergency', 'Urgent', 'General'])]
                 
-                print(f"类型分布:")
+                print(f"class型分布:")
                 print(df[type_col].value_counts())
                 
             self.historical_data = df
             return df
             
         except Exception as e:
-            print(f"⚠️ 加载历史数据失败: {e}")
+            print(f"⚠️ 加载历史datafailed: {e}")
             return pd.DataFrame()
     
     def load_srr_rules(self) -> Dict:
@@ -189,7 +189,7 @@ class SRRCaseTypeClassifier:
                 elif current_section and len(text) > 10:
                     rules[current_section].append(text)
             
-            print(f"✅ 加载SRR规则成功")
+            print(f"✅ 加载SRR规则success")
             for section, items in rules.items():
                 print(f"{section}: {len(items)} 条规则")
                 
@@ -197,12 +197,12 @@ class SRRCaseTypeClassifier:
             return rules
             
         except Exception as e:
-            print(f"⚠️ 加载SRR规则失败: {e}")
+            print(f"⚠️ 加载SRR规则failed: {e}")
             # 使用默认规则
             return self._get_default_rules()
     
     def _get_default_rules(self) -> Dict:
-        """获取默认分类规则"""
+        """获取默认classify规则"""
         return {
             'emergency_criteria': [
                 'immediate safety risk to public',
@@ -228,10 +228,10 @@ class SRRCaseTypeClassifier:
         }
     
     def extract_features(self, case_data: Dict) -> Dict:
-        """从案件数据中提取特征"""
+        """从案件data中extractfeature"""
         features = {}
         
-        # 文本特征
+        # 文本feature
         text_fields = [
             case_data.get('I_nature_of_request', ''),
             case_data.get('J_subject_matter', ''),
@@ -241,42 +241,42 @@ class SRRCaseTypeClassifier:
         
         combined_text = ' '.join(str(field) for field in text_fields).lower()
         
-        # 紧急关键词计数
+        # 紧急关key词计数
         emergency_count = sum(1 for keyword in self.emergency_keywords 
                             if keyword.lower() in combined_text)
         features['emergency_keywords'] = emergency_count
         
-        # 案件来源特征
+        # 案件来源feature
         source = case_data.get('B_source', '').lower()
         features['source_rcc'] = 1 if 'rcc' in source else 0
         features['source_icc'] = 1 if 'icc' in source else 0
         features['source_1823'] = 1 if '1823' in source else 0
         
-        # 时间特征 (周末/节假日可能更紧急)
+        # 时间feature (周末/节假日可能更紧急)
         try:
             date_str = case_data.get('A_date_received', '')
             if date_str:
-                # 简单的时间特征
+                # 简单的时间feature
                 features['is_weekend'] = 0  # 可以根据实际日期计算
         except:
             features['is_weekend'] = 0
         
-        # 斜坡编号特征 (某些区域可能更容易有紧急情况)
+        # 斜坡编号feature (某些区域可能更容易有紧急情况)
         slope_no = case_data.get('G_slope_no', '')
         features['has_slope_no'] = 1 if slope_no else 0
         
-        # 联系信息特征 (有联系方式可能更紧急)
+        # 联系informationfeature (有联系方式可能更紧急)
         contact = case_data.get('F_contact_no', '')
         features['has_contact'] = 1 if contact else 0
         
-        # 文本长度特征 (详细描述可能表示更复杂的问题)
+        # 文本长度feature (详细描述可能table示更复杂的问题)
         features['text_length'] = len(combined_text)
         features['word_count'] = len(combined_text.split())
         
         return features
     
     def rule_based_classification(self, case_data: Dict) -> Tuple[str, float]:
-        """基于规则的分类"""
+        """基于规则的classify"""
         text_fields = [
             case_data.get('I_nature_of_request', ''),
             case_data.get('J_subject_matter', ''),
@@ -291,12 +291,12 @@ class SRRCaseTypeClassifier:
             if keyword.lower() in combined_text:
                 emergency_score += 1
         
-        # 检查紧急案件类型
+        # check紧急案件class型
         for urgent_type in self.urgent_types:
             if urgent_type.lower() in combined_text:
                 emergency_score += 0.5
         
-        # 检查一般案件类型
+        # check一般案件class型
         general_score = 0
         for general_type in self.general_types:
             if general_type.lower() in combined_text:
@@ -318,15 +318,15 @@ class SRRCaseTypeClassifier:
             return 'General', min(0.7, 0.3 + general_score * 0.1)
     
     def train_ml_model(self) -> bool:
-        """训练机器学习模型"""
+        """training机器学习model"""
         try:
             if self.historical_data is None or len(self.historical_data) == 0:
-                print("⚠️ 没有历史数据，无法训练ML模型")
+                print("⚠️ 没有历史data，无法trainingMLmodel")
                 return False
             
             df = self.historical_data.copy()
             
-            # 找到类型列
+            # 找到class型列
             type_col = None
             for col in df.columns:
                 if 'type' in col.lower() and ('emergency' in col.lower() or 'urgent' in col.lower()):
@@ -334,10 +334,10 @@ class SRRCaseTypeClassifier:
                     break
             
             if not type_col:
-                print("⚠️ 未找到类型列")
+                print("⚠️ 未找到class型列")
                 return False
             
-            # 准备训练数据
+            # 准备trainingdata
             nature_col = None
             for col in df.columns:
                 if 'nature' in col.lower():
@@ -348,14 +348,14 @@ class SRRCaseTypeClassifier:
                 print("⚠️ 未找到投诉性质列")
                 return False
             
-            # 清理数据
+            # cleanupdata
             df = df.dropna(subset=[nature_col, type_col])
             df[nature_col] = df[nature_col].fillna('')
             
             X = df[nature_col].astype(str)
             y = df[type_col]
             
-            # 文本向量化
+            # 文本vector化
             self.vectorizer = TfidfVectorizer(
                 max_features=1000,
                 stop_words='english',
@@ -365,7 +365,7 @@ class SRRCaseTypeClassifier:
             
             X_vectorized = self.vectorizer.fit_transform(X)
             
-            # 训练模型
+            # trainingmodel
             X_train, X_test, y_train, y_test = train_test_split(
                 X_vectorized, y, test_size=0.2, random_state=42, stratify=y
             )
@@ -378,20 +378,20 @@ class SRRCaseTypeClassifier:
             
             self.model.fit(X_train, y_train)
             
-            # 评估模型
+            # evaluatemodel
             y_pred = self.model.predict(X_test)
-            print("✅ ML模型训练完成")
-            print("\n模型评估:")
+            print("✅ MLmodeltraining完成")
+            print("\nmodel评估:")
             print(classification_report(y_test, y_pred))
             
             return True
             
         except Exception as e:
-            print(f"⚠️ ML模型训练失败: {e}")
+            print(f"⚠️ MLmodeltrainingfailed: {e}")
             return False
     
     def ml_classification(self, case_data: Dict) -> Tuple[str, float]:
-        """基于机器学习的分类"""
+        """基于机器学习的classify"""
         if self.model is None or self.vectorizer is None:
             return 'General', 0.3
         
@@ -405,14 +405,14 @@ class SRRCaseTypeClassifier:
             
             combined_text = ' '.join(str(field) for field in text_fields)
             
-            # 向量化
+            # vector化
             X = self.vectorizer.transform([combined_text])
             
-            # 预测
+            # prediction
             prediction = self.model.predict(X)[0]
             probabilities = self.model.predict_proba(X)[0]
             
-            # 获取置信度
+            # getconfidence
             class_names = self.model.classes_
             pred_idx = np.where(class_names == prediction)[0][0]
             confidence = probabilities[pred_idx]
@@ -420,41 +420,41 @@ class SRRCaseTypeClassifier:
             return prediction, confidence
             
         except Exception as e:
-            print(f"⚠️ ML分类失败: {e}")
+            print(f"⚠️ MLclassifyfailed: {e}")
             return 'General', 0.3
     
     def classify_case_type(self, case_data: Dict) -> Dict:
-        """综合分类案件类型"""
+        """综合classify案件class型"""
         
-        # 规则分类
+        # 规则classify
         rule_type, rule_confidence = self.rule_based_classification(case_data)
         
-        # ML分类
+        # MLclassify
         ml_type, ml_confidence = self.ml_classification(case_data)
         
         # 综合决策
         if rule_confidence > 0.7:
-            # 高置信度规则分类
+            # 高confidence规则classify
             final_type = rule_type
             final_confidence = rule_confidence
             method = 'rule_based'
         elif ml_confidence > 0.6:
-            # 高置信度ML分类
+            # 高confidenceMLclassify
             final_type = ml_type
             final_confidence = ml_confidence
             method = 'machine_learning'
         elif rule_confidence > ml_confidence:
-            # 规则分类置信度更高
+            # 规则classifyconfidence更高
             final_type = rule_type
             final_confidence = rule_confidence
             method = 'rule_based'
         else:
-            # ML分类置信度更高
+            # MLclassifyconfidence更高
             final_type = ml_type
             final_confidence = ml_confidence
             method = 'machine_learning'
         
-        # 安全检查：确保返回有效类型
+        # securitycheck：确保return有效class型
         if final_type not in ['Emergency', 'Urgent', 'General']:
             final_type = 'General'
             final_confidence = 0.5
@@ -470,35 +470,35 @@ class SRRCaseTypeClassifier:
         }
     
     def initialize(self) -> bool:
-        """初始化分类器，使用缓存优化"""
-        print("🚀 初始化SRR案件类型AI分类器...")
+        """initializeclassify器，使用cache优化"""
+        print("🚀 initializeSRR案件class型AIclassify器...")
         
-        # 尝试从缓存获取完整的分类器
+        # 尝试从cacheget完整的classify器
         cache_key = "srr_case_type_classifier"
         cached_classifier = get_cached_model(cache_key)
         
         if cached_classifier:
-            # 使用缓存的分类器
+            # 使用cache的classify器
             self.model = cached_classifier.get('model')
             self.vectorizer = cached_classifier.get('vectorizer')
             self.label_encoder = cached_classifier.get('label_encoder')
             self.feature_names = cached_classifier.get('feature_names', [])
             self.classification_rules = cached_classifier.get('classification_rules', {})
             self.historical_data = cached_classifier.get('historical_data')
-            print("✅ 使用缓存的AI分类器 (跳过训练)")
+            print("✅ 使用cache的AIclassify器 (跳过training)")
             return True
         
-        # 缓存未命中，正常初始化
-        # 加载历史数据
+        # cache未命中，正常initialize
+        # load历史data
         self.srr_data, self.complaints_data = load_training_data()
         
-        # 加载SRR规则
+        # loadSRR规则
         self.rules_data = load_srr_rules()
         
-        # 训练ML模型
+        # trainingMLmodel
         ml_success = self.train_ml_model()
         
-        # 缓存分类器
+        # cacheclassify器
         try:
             classifier_cache = {
                 'model': self.model,
@@ -510,25 +510,25 @@ class SRRCaseTypeClassifier:
             }
             cache_model(cache_key, classifier_cache)
         except Exception as e:
-            print(f"⚠️ 缓存分类器失败: {e}")
+            print(f"⚠️ cacheclassify器failed: {e}")
         
         if ml_success:
-            print("✅ AI分类器初始化完成 (规则 + ML)")
+            print("✅ AIclassify器initialize完成 (规则 + ML)")
         else:
-            print("✅ AI分类器初始化完成 (仅规则)")
+            print("✅ AIclassify器initialize完成 (仅规则)")
         
         return True
     
     def get_classification_explanation(self, case_data: Dict, result: Dict) -> str:
-        """获取分类解释"""
+        """获取classify解释"""
         explanation_parts = []
         
-        # 基本信息
-        explanation_parts.append(f"分类结果: {result['predicted_type']}")
-        explanation_parts.append(f"置信度: {result['confidence']:.2f}")
-        explanation_parts.append(f"分类方法: {result['method']}")
+        # 基本information
+        explanation_parts.append(f"classifyresult: {result['predicted_type']}")
+        explanation_parts.append(f"confidence: {result['confidence']:.2f}")
+        explanation_parts.append(f"classifymethod: {result['method']}")
         
-        # 关键因素
+        # 关key因素
         text_fields = [
             case_data.get('I_nature_of_request', ''),
             case_data.get('J_subject_matter', ''),
@@ -536,7 +536,7 @@ class SRRCaseTypeClassifier:
         ]
         combined_text = ' '.join(str(field) for field in text_fields).lower()
         
-        # 检测到的关键词
+        # 检测到的关key词
         detected_keywords = []
         for keyword in self.emergency_keywords:
             if keyword.lower() in combined_text:
@@ -552,11 +552,11 @@ class SRRCaseTypeClassifier:
         
         return ' | '.join(explanation_parts)
 
-# 全局分类器实例
+# 全局classify器instance
 _classifier_instance = None
 
 def get_classifier() -> SRRCaseTypeClassifier:
-    """获取分类器实例 (单例模式)"""
+    """获取classify器instance (单例模式)"""
     global _classifier_instance
     if _classifier_instance is None:
         _classifier_instance = SRRCaseTypeClassifier()
@@ -564,7 +564,7 @@ def get_classifier() -> SRRCaseTypeClassifier:
     return _classifier_instance
 
 def classify_case_type_ai(case_data: Dict) -> Dict:
-    """AI分类案件类型的主要接口"""
+    """AIclassify案件class型的主要接口"""
     try:
         classifier = get_classifier()
         result = classifier.classify_case_type(case_data)
@@ -573,27 +573,27 @@ def classify_case_type_ai(case_data: Dict) -> Dict:
         explanation = classifier.get_classification_explanation(case_data, result)
         result['explanation'] = explanation
         
-        print(f"🤖 AI分类结果: {result['predicted_type']} (置信度: {result['confidence']:.2f})")
-        print(f"📝 分类依据: {explanation}")
+        print(f"🤖 AIclassifyresult: {result['predicted_type']} (confidence: {result['confidence']:.2f})")
+        print(f"📝 classify依据: {explanation}")
         
         return result
         
     except Exception as e:
-        print(f"⚠️ AI分类失败: {e}")
-        # 返回默认分类
+        print(f"⚠️ AIclassifyfailed: {e}")
+        # return默认classify
         return {
             'predicted_type': 'General',
             'confidence': 0.5,
             'method': 'default',
             'type_code': '3',
-            'explanation': f'AI分类失败，使用默认分类: {e}'
+            'explanation': f'AIclassifyfailed，使用默认classify: {e}'
         }
 
 if __name__ == "__main__":
-    # 测试分类器
-    print("🧪 测试SRR案件类型AI分类器")
+    # testclassify器
+    print("🧪 测试SRR案件class型AIclassify器")
     
-    # 测试案例
+    # test案例
     test_cases = [
         {
             'I_nature_of_request': 'Fallen tree blocking road, immediate danger to public',
@@ -621,6 +621,6 @@ if __name__ == "__main__":
     for i, test_case in enumerate(test_cases, 1):
         print(f"\n--- 测试案例 {i} ---")
         result = classify_case_type_ai(test_case)
-        print(f"预测类型: {result['predicted_type']}")
-        print(f"类型代码: {result['type_code']}")
+        print(f"predictionclass型: {result['predicted_type']}")
+        print(f"class型代码: {result['type_code']}")
         print(f"解释: {result['explanation']}")

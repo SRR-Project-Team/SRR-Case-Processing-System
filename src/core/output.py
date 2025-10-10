@@ -1,19 +1,19 @@
 """
-输出模块 - 处理JSON格式化和输出逻辑
+输出module - processJSONformat和输出逻辑
 
-本模块负责将提取的数据转换为结构化的JSON格式，包括：
-- 数据模型定义（StructuredCaseData、ProcessingResult）
-- 数据转换和验证
-- 成功/错误结果创建
-- 文件类型验证
-- JSON格式化输出
+本module负责将extract的data转换为结构化的JSON格式，包括：
+- datamodel定义（StructuredCaseData、ProcessingResult）
+- data转换和validate
+- success/errorresultcreate
+- fileclass型validate
+- JSONformat输出
 
-主要功能：
-1. 定义A-Q字段的数据模型
-2. 将原始数据转换为结构化对象
-3. 创建处理结果（成功/失败）
-4. 验证文件类型和格式
-5. 格式化JSON输出
+mainfunction：
+1. 定义A-Qfield的datamodel
+2. 将原始data转换为结构化object
+3. createprocessresult（success/failed）
+4. validatefileclass型和格式
+5. formatJSON输出
 
 作者: Project3 Team
 版本: 1.0
@@ -24,20 +24,20 @@ from typing import Optional, Dict, Any
 
 class StructuredCaseData(BaseModel):
     """
-    结构化数据模型：严格对应新定义的A-Q字段
+    结构化datamodel：严格对应新定义的A-Qfield
     
-    按照SRR案件处理规则定义的18个字段，每个字段都有默认值，
-    确保JSON输出时所有键都存在，避免缺失字段的问题。
+    按照SRR案件process规则定义的18个field，每个field都有默认值，
+    确保JSON输出时所有键都存在，避免缺失field的问题。
     
     Attributes:
         A_date_received (str): 案件接收日期（AIMS生成）
         B_source (str): 来源（Web/RCC/ICC/1823等）
         C_1823_case_no (str): 1823案件号（仅RCC/ICC来源）
-        D_type (str): 案件类型（Emergency/Urgent/General）
+        D_type (str): 案件class型（Emergency/Urgent/General）
         E_caller_name (str): 来电人姓名
         F_contact_no (str): 联系电话
         G_slope_no (str): 斜坡编号
-        H_location (str): 位置（从Excel数据获取）
+        H_location (str): 位置（从Exceldata获取）
         I_nature_of_request (str): 请求性质摘要
         J_subject_matter (str): 事项主题
         K_10day_rule_due_date (str): 10天规则截止日期
@@ -49,17 +49,17 @@ class StructuredCaseData(BaseModel):
         P_fax_pages (str): 传真页数（含附件）
         Q_case_details (str): 案件详情（带建议截止日期）
     """
-    # A-Q字段按新规则定义，确保所有键始终存在（缺失时为空）
+    # A-Qfield按新规则定义，确保所有key始终存在（缺失时为空）
     A_date_received: str = ""                  # A: 案件接收日期（AIMS生成）
     B_source: str = ""                         # B: 来源（与Step 1相同）
     C_case_number: str = ""                    # C: 案件编号
-    D_type: str = ""                           # D: 案件类型（根据历史记录和规则分类）
+    D_type: str = ""                           # D: 案件class型（根据历史record和规则classify）
     E_caller_name: str = ""                    # E: 来电人姓名（取决于B）
     F_contact_no: str = ""                     # F: 联系电话（取决于B）
     G_slope_no: str = ""                       # G: 斜坡编号（参考邮件）
     H_location: str = ""                       # H: 位置（根据G从slope data.xlsx获取）
     I_nature_of_request: str = ""              # I: 请求性质（从邮件/PDF生成摘要）
-    J_subject_matter: str = ""                 # J: 事项主题（根据历史记录和规则分类）
+    J_subject_matter: str = ""                 # J: 事项主题（根据历史record和规则classify）
     K_10day_rule_due_date: str = ""            # K: 10天规则截止日期（A+10天）
     L_icc_interim_due: str = ""                # L: ICC临时回复截止日期（10日历日内）
     M_icc_final_due: str = ""                  # M: ICC最终回复截止日期（21日历日内）
@@ -72,15 +72,15 @@ class StructuredCaseData(BaseModel):
 
 class ProcessingResult(BaseModel):
     """
-    处理结果模型
+    processresultmodel
     
-    用于封装API处理结果，包含文件名、状态、消息和结构化数据
+    用于封装APIprocessresult，包含文件名、状态、消息和结构化data
     
     Attributes:
-        filename (str): 处理的文件名
-        status (str): 处理状态（"success" 或 "error"）
+        filename (str): process的文件名
+        status (str): process状态（"success" 或 "error"）
         message (str): 状态消息
-        structured_data (Optional[StructuredCaseData]): 结构化数据（成功时）
+        structured_data (Optional[StructuredCaseData]): 结构化data（success时）
     """
     filename: str
     status: str
@@ -91,16 +91,16 @@ class ProcessingResult(BaseModel):
 
 def create_structured_data(extracted_data: Dict[str, Any]) -> StructuredCaseData:
     """
-    将提取的数据转换为StructuredCaseData对象
+    将extract的data转换为StructuredCaseDataobject
     
-    将extractFromTxt模块提取的原始字典数据转换为结构化的Pydantic模型，
-    确保所有A-Q字段都有值（缺失时使用空字符串）
+    将extractFromTxtmoduleextract的原始字典data转换为结构化的Pydanticmodel，
+    确保所有A-Qfield都有值（缺失时使用空字符串）
     
     Args:
-        extracted_data (Dict[str, Any]): 从extractFromTxt.py提取的原始数据字典
+        extracted_data (Dict[str, Any]): 从extractFromTxt.pyextract的原始data字典
         
     Returns:
-        StructuredCaseData: 结构化的案件数据对象
+        StructuredCaseData: 结构化的案件dataobject
         
     Example:
         >>> data = {"A_date_received": "2024-01-15", "B_source": "Web"}
@@ -132,17 +132,17 @@ def create_structured_data(extracted_data: Dict[str, Any]) -> StructuredCaseData
 
 def create_success_result(filename: str, structured_data: StructuredCaseData, summary: Optional[Dict[str, Any]] = None) -> ProcessingResult:
     """
-    创建成功处理的结果对象
+    创建successprocess的resultobject
     
-    当文件处理成功时，创建包含结构化数据的成功结果对象
+    当文件processsuccess时，创建包含结构化data的successresultobject
     
     Args:
-        filename (str): 处理的文件名
-        structured_data (StructuredCaseData): 结构化的案件数据
-        summary (Optional[Dict[str, Any]]): 可选的总结数据
+        filename (str): process的文件名
+        structured_data (StructuredCaseData): 结构化的案件data
+        summary (Optional[Dict[str, Any]]): 可选的summarizedata
         
     Returns:
-        ProcessingResult: 成功处理的结果对象
+        ProcessingResult: successprocess的resultobject
         
     Example:
         >>> data = StructuredCaseData(A_date_received="2024-01-15")
@@ -153,7 +153,7 @@ def create_success_result(filename: str, structured_data: StructuredCaseData, su
     return ProcessingResult(
         filename=filename,
         status="success",
-        message="SRR案件处理成功",
+        message="SRR案件processsuccess",
         structured_data=structured_data,
         summary=summary
     )
@@ -161,16 +161,16 @@ def create_success_result(filename: str, structured_data: StructuredCaseData, su
 
 def create_error_result(filename: str, error_message: str) -> ProcessingResult:
     """
-    创建错误处理的结果对象
+    创建errorprocess的resultobject
     
-    当文件处理失败时，创建包含错误信息的结果对象
+    当文件processfailed时，创建包含errorinformation的resultobject
     
     Args:
-        filename (str): 处理的文件名
-        error_message (str): 错误信息描述
+        filename (str): process的文件名
+        error_message (str): errorinformation描述
         
     Returns:
-        ProcessingResult: 错误处理的结果对象
+        ProcessingResult: errorprocess的resultobject
         
     Example:
         >>> result = create_error_result("test.txt", "文件格式不支持")
@@ -187,13 +187,13 @@ def create_error_result(filename: str, error_message: str) -> ProcessingResult:
 
 def format_json_output(processing_result: ProcessingResult) -> Dict[str, Any]:
     """
-    将处理结果格式化为JSON输出格式
+    将processresult格式化为JSON输出格式
     
-    将ProcessingResult对象转换为字典格式，便于JSON序列化
-    成功时包含structured_data，失败时不包含
+    将ProcessingResultobject转换为字典格式，便于JSON序列化
+    success时包含structured_data，failed时不包含
     
     Args:
-        processing_result (ProcessingResult): 处理结果对象
+        processing_result (ProcessingResult): processresultobject
         
     Returns:
         Dict[str, Any]: 格式化的JSON输出字典
@@ -218,15 +218,15 @@ def format_json_output(processing_result: ProcessingResult) -> Dict[str, Any]:
 
 def validate_file_type(content_type: str) -> bool:
     """
-    验证文件类型是否为支持的格式
+    validate文件class型是否为支持的格式
     
-    检查上传文件的MIME类型是否为text/plain（TXT文件）
+    check上传文件的MIMEclass型是否为text/plain（TXT文件）
     
     Args:
-        content_type (str): 文件的MIME类型
+        content_type (str): 文件的MIMEclass型
         
     Returns:
-        bool: 是否为支持的文件类型
+        bool: 是否为支持的文件class型
         
     Example:
         >>> validate_file_type("text/plain")
@@ -239,12 +239,12 @@ def validate_file_type(content_type: str) -> bool:
 
 def get_file_type_error_message() -> str:
     """
-    获取文件类型错误信息
+    获取文件class型errorinformation
     
-    返回标准的文件类型错误消息，用于用户友好的错误提示
+    return标准的文件class型error消息，用于用户友好的error提示
     
     Returns:
-        str: 文件类型错误信息
+        str: 文件class型errorinformation
         
     Example:
         >>> get_file_type_error_message()
