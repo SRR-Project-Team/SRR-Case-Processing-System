@@ -34,34 +34,43 @@ config/
 
 ```
 data/
-└── 📄 srr_cases.db               # SQLite database
+├── 📄 Slopes Complaints & Enquires... .xlsx  # Historical complaints (4,047 cases)
+├── 📄 SRR data 2021-2024.csv                 # Historical SRR data (1,251 cases)
+├── 📄 Tree inventory.xlsx                    # Tree inventory (32,405 trees)
+└── 📄 srr_cases.db                           # SQLite database (current cases)
 ```
 
-### Database Schema
-- **Cases Table**: Stores processed case records
-- **Fields**: A-Q columns + metadata (created_at, updated_at)
+### Data Sources
+- **Slopes Complaints Excel**: Historical slope complaints from 2021
+- **SRR Data CSV**: Historical SRR cases from 2021-2024
+- **Tree Inventory Excel**: Complete tree inventory with location data
+- **SQLite Database**: Current processed cases (excluded from similarity search)
 
 ## 📚 Documentation (`docs/`)
 
 ```
 docs/
-├── 📄 README.md                  # Documentation index
-├── 📄 API_DOCUMENTATION.md       # API endpoints and usage
-├── 📄 DATABASE_GUIDE.md          # Database operations
-├── 📄 DEPLOYMENT_GUIDE.md        # Production deployment
-├── 📄 DEVELOPMENT_GUIDE.md       # Development setup
-├── 📄 AI_FEATURES.md             # AI functionality details
-└── 📄 DESIGN_PROTOTYPE.md        # Interface design prototype
+├── 📄 README.md                      # Documentation index
+├── 📄 API_DOCUMENTATION.md           # API endpoints and usage
+├── 📄 CASE_SIMILARITY_SEARCH.md      # Similarity matching feature
+├── 📄 DATABASE_GUIDE.md              # Database operations
+├── 📄 DEPLOYMENT_GUIDE.md            # Production deployment
+├── 📄 DEVELOPMENT_GUIDE.md           # Development setup
+├── 📄 AI_FEATURES.md                 # AI functionality details
+├── 📄 DESIGN_PROTOTYPE.md            # Interface design prototype
+└── 📄 OPENAI_API_SETUP.md            # OpenAI API configuration
 ```
 
 ### Documentation Structure
 - **README.md**: Main documentation hub
 - **API_DOCUMENTATION.md**: RESTful API reference
+- **CASE_SIMILARITY_SEARCH.md**: Historical case matching and similarity algorithms
 - **DATABASE_GUIDE.md**: Database schema and operations
 - **DEPLOYMENT_GUIDE.md**: Production deployment instructions
 - **DEVELOPMENT_GUIDE.md**: Development environment setup
 - **AI_FEATURES.md**: AI model details and usage
 - **DESIGN_PROTOTYPE.md**: Interface design specifications and prototype
+- **OPENAI_API_SETUP.md**: OpenAI API configuration and proxy setup
 
 ## 🎨 Frontend (`frontend/`)
 
@@ -153,7 +162,8 @@ database/
 #### Services (`src/services/`)
 ```
 services/
-└── 📄 llm_service.py                 # Doubao API service
+├── 📄 historical_case_matcher.py    # Historical case similarity matching
+└── 📄 llm_service.py                 # LLM API service (OpenAI/Volcengine)
 ```
 
 #### Utilities (`src/utils/`)
@@ -241,9 +251,12 @@ python start.py check
 - **FastAPI**: Web framework
 - **SQLAlchemy**: Database ORM
 - **EasyOCR**: OCR processing
-- **volcengine-python-sdk**: Doubao API client
-- **Pandas**: Data processing
+- **OpenAI**: LLM API client (primary)
+- **volcengine-python-sdk**: Doubao API client (alternative)
+- **Pandas**: Data processing and Excel/CSV handling
 - **scikit-learn**: Machine learning
+- **chardet**: Encoding detection
+- **httpx**: HTTP client with proxy support
 
 ### Node.js Frontend
 - **React**: UI framework
@@ -255,14 +268,18 @@ python start.py check
 
 ### Required Environment Variables
 ```bash
-ARK_API_KEY="your_doubao_api_key"  # Volcengine API key
+OPENAI_API_KEY="your_openai_api_key"     # OpenAI API key (primary)
+ARK_API_KEY="your_doubao_api_key"        # Volcengine API key (alternative)
 ```
 
 ### Optional Configuration
 ```bash
-API_HOST="localhost"               # API host
-API_PORT="8001"                   # API port
-FRONTEND_PORT="3000"              # Frontend port
+API_HOST="localhost"                     # API host
+API_PORT="8001"                         # API port
+FRONTEND_PORT="3000"                    # Frontend port
+LLM_PROVIDER="openai"                   # LLM provider (openai/volcengine)
+OPENAI_PROXY_URL="socks5://localhost:7890"  # Proxy for OpenAI (if needed)
+OPENAI_USE_PROXY="true"                 # Enable proxy (true/false)
 ```
 
 ## 📈 Performance Considerations
@@ -290,5 +307,8 @@ FRONTEND_PORT="3000"              # Frontend port
 - **API Keys**: Environment variable storage
 
 ---
+
+**Last Updated**: 2025-10-19  
+**Version**: 2.0
 
 This project structure provides a clean, modular architecture that supports both development and production deployment while maintaining clear separation of concerns and easy maintenance.

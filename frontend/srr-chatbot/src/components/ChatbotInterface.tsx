@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Upload, FileText, Bot, User } from 'lucide-react';
 import { Message, ChatState, FileSummary } from '../types';
-import { processFile, processMultipleFiles, queryCase, BatchProcessingResponse } from '../services/api';
+import { processFile, processMultipleFiles, queryCase, findSimilarCases, getCaseStatistics, BatchProcessingResponse } from '../services/api';
 import logoImage from '../images/system_logo.png'; 
 import universityLogo from '../images/university_logo.png';
 import FileUploadModal from './FileUploadModal';
@@ -224,6 +224,88 @@ const ChatbotInterface: React.FC = () => {
             });
           }
         }
+
+          // Auto-search for similar cases
+          try {
+            addMessage('bot', '🔍 Searching for similar historical cases...');
+            const similarResult = await findSimilarCases(caseData, 5, 0.3);
+            
+            if (similarResult.status === 'success' && similarResult.total_found > 0) {
+              const cases = similarResult.similar_cases;
+              let message = `📚 **Found ${cases.length} Similar Historical Cases:**\n\n`;
+              
+              cases.forEach((item: any, index: number) => {
+                const c = item.case;
+                const score = (item.similarity_score * 100).toFixed(1);
+                const isDup = item.is_potential_duplicate ? ' 🔴 **POTENTIAL DUPLICATE**' : '';
+                const source = item.data_source || 'Unknown';
+                
+                message += `**${index + 1}. [${source}] Case #${c.C_case_number || 'N/A'}** (${score}% match)${isDup}\n`;
+                message += `   📅 Date: ${c.A_date_received || 'N/A'}\n`;
+                message += `   📍 Location: ${c.H_location || 'N/A'}\n`;
+                message += `   🏗️ Slope: ${c.G_slope_no || 'N/A'}\n`;
+                message += `   📝 Subject: ${c.J_subject_matter || 'N/A'}\n`;
+                
+                // Add caller information
+                if (c.E_caller_name || c.F_contact_no) {
+                  message += `   👤 Caller: ${c.E_caller_name || 'N/A'}\n`;
+                  message += `   📞 Phone: ${c.F_contact_no || 'N/A'}\n`;
+                }
+                
+                // Add tree information if available
+                if (c.tree_id || c.tree_count) {
+                  if (c.tree_id) {
+                    message += `   🌳 Tree ID: ${c.tree_id}\n`;
+                  }
+                  if (c.tree_count) {
+                    message += `   🌲 Number of Trees: ${c.tree_count}\n`;
+                  }
+                }
+                
+                // Add nature of request (complaint details)
+                if (c.I_nature_of_request && c.I_nature_of_request !== 'N/A' && c.I_nature_of_request.trim()) {
+                  const nature = c.I_nature_of_request.length > 150 
+                    ? c.I_nature_of_request.substring(0, 150) + '...' 
+                    : c.I_nature_of_request;
+                  message += `   📄 Complaint Details: ${nature}\n`;
+                }
+                
+                // Add inspector remarks if available
+                if (c.inspector_remarks) {
+                  message += `   🔍 Inspector Remarks: ${c.inspector_remarks}\n`;
+                }
+                
+                message += '\n';
+              });
+              
+              addMessage('bot', message);
+              
+              // Get statistics for the location
+              if (caseData.H_location) {
+                const statsResult = await getCaseStatistics({ location: caseData.H_location });
+                if (statsResult.status === 'success' && statsResult.statistics) {
+                  const stats = statsResult.statistics;
+                  const isFrequent = stats.is_frequent_complaint;
+                  
+                  let statsMessage = `📊 **Location Statistics:**\n\n`;
+                  statsMessage += `📍 Location: ${caseData.H_location}\n`;
+                  statsMessage += `📈 Total Cases: ${stats.total_cases}\n`;
+                  statsMessage += `⚠️ Frequent Complaint: ${isFrequent ? 'YES 🔴' : 'NO ✅'}\n\n`;
+                  
+                  if (isFrequent) {
+                    statsMessage += `⚠️ **This location has received ${stats.total_cases} complaints, indicating a recurring issue that may require attention.**`;
+                  }
+                  
+                  addMessage('bot', statsMessage);
+                }
+              }
+            } else {
+              addMessage('bot', '✅ No similar historical cases found. This appears to be a unique case.');
+            }
+          } catch (error) {
+            console.error('Similar case search error:', error);
+            addMessage('bot', '⚠️ Unable to search similar cases, but file processing was successful.');
+          }
 
           // Clear selected file list
           setSelectedFiles([]);

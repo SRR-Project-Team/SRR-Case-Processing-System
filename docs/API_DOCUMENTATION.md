@@ -265,4 +265,7 @@ fetch('/api/process-file', {
 
 ---
 
+**Last Updated**: 2025-10-19  
+**API Version**: 1.0
+
 For additional support or questions about the API, please refer to the project documentation or contact the development team.

@@ -2,31 +2,38 @@
 LLM API Service Module
 
 Provides interaction functionality with Large Language Model APIs, including text summarization, Q&A, etc.
-Uses Volcengine official SDK.
+Supports both OpenAI API (with proxy) and Volcengine (Doubao) API.
 """
 
 import os
 import logging
 from typing import Optional, Dict, Any
-from volcenginesdkarkruntime import Ark
+from openai import OpenAI
+import httpx
+# from volcenginesdkarkruntime import Ark  # Volcengine API (kept for future use)
 
 class LLMService:
     """
     LLM API Service Class
     
     Provides interaction functionality with Large Language Model APIs, including text summarization, Q&A, etc.
-    Uses Volcengine official SDK.
+    Supports both OpenAI API (with proxy) and Volcengine (Doubao) API.
     """
     
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, provider: str = "openai", proxy_url: str = None, use_proxy: bool = False):
         """
         Initialize LLM Service
         
         Args:
             api_key: API key
+            provider: API provider, "openai" or "volcengine" (default: "openai")
+            proxy_url: Proxy URL (e.g., "http://127.0.0.1:7890")
+            use_proxy: Whether to use proxy (default: False)
         """
-        # self.api_key = api_key
-        self.api_key = ''
+        self.api_key = api_key
+        self.provider = provider
+        self.proxy_url = proxy_url
+        self.use_proxy = use_proxy
         self.logger = logging.getLogger(__name__)
         
         # Validate API key
@@ -34,12 +41,29 @@ class LLMService:
             self.logger.warning("⚠️ API key not set, AI summarization will be unavailable")
             self.client = None
         else:
-            # Initialize Volcengine client
+            # Initialize client based on provider
             try:
-                self.client = Ark(api_key=self.api_key)
-                self.logger.info("✅ Volcengine LLM client initialized successfully")
+                if provider == "openai":
+                    # Configure proxy if needed
+                    if use_proxy and proxy_url:
+                        self.logger.info(f"🌐 Using proxy: {proxy_url}")
+                        http_client = httpx.Client(proxy=proxy_url, timeout=30.0)
+                        self.client = OpenAI(api_key=self.api_key, http_client=http_client)
+                    else:
+                        self.client = OpenAI(api_key=self.api_key)
+                    self.logger.info("✅ OpenAI LLM client initialized successfully")
+                elif provider == "volcengine":
+                    # Volcengine API (commented out, kept for future use)
+                    # from volcenginesdkarkruntime import Ark
+                    # self.client = Ark(api_key=self.api_key)
+                    # self.logger.info("✅ Volcengine LLM client initialized successfully")
+                    self.logger.warning("⚠️ Volcengine API is currently disabled")
+                    self.client = None
+                else:
+                    self.logger.error(f"❌ Unknown provider: {provider}")
+                    self.client = None
             except Exception as e:
-                self.logger.error(f"❌ Volcengine LLM client initialization failed: {e}")
+                self.logger.error(f"❌ LLM client initialization failed: {e}")
                 self.client = None
     
     def summarize_text(self, text: str, max_length: int = 600) -> Optional[str]:
@@ -63,20 +87,38 @@ class LLMService:
             message = f'''Summarize the text with key elements(case type, caller name and etc) in a natural and fluent sentence. 
             In addition, the summary should include the short answer of the duration of the case open up to end date or now, 
             the number of departments it has been handled by, and whether it falls under the responsibility of the slope and tree maintenance department.
-            No more than {max_length} words.:\n\n{text[:9000]} '''  # 限制文本长度
+            No more than {max_length} words.:\n\n{text[:9000]} '''  # Limit text length
             
-            # Call Volcengine API
-            response = self.client.chat.completions.create(
-                model="doubao-seed-1-6-flash-250828",
-                messages=[{"content": message, "role": "user"}]
-            )
+            # Call API based on provider
+            if self.provider == "openai":
+                response = self.client.chat.completions.create(
+                    model="gpt-4o-mini",  # Using GPT-4o-mini for cost efficiency
+                    messages=[{"role": "user", "content": message}],
+                    max_tokens=300,
+                    temperature=0.3
+                )
+                
+                # Extract response content
+                if response and response.choices and len(response.choices) > 0:
+                    content = response.choices[0].message.content
+                    if content and content.strip():
+                        self.logger.info("✅ OpenAI AI summary generated successfully")
+                        return content.strip()
             
-            # Extract response content
-            if response and response.choices and len(response.choices) > 0:
-                content = response.choices[0].message.content
-                if content and content.strip():
-                    self.logger.info("✅ AI summary generated successfully")
-                    return content.strip()
+            elif self.provider == "volcengine":
+                # Volcengine API (commented out, kept for future use)
+                # response = self.client.chat.completions.create(
+                #     model="doubao-seed-1-6-flash-250828",
+                #     messages=[{"content": message, "role": "user"}]
+                # )
+                # 
+                # if response and response.choices and len(response.choices) > 0:
+                #     content = response.choices[0].message.content
+                #     if content and content.strip():
+                #         self.logger.info("✅ Volcengine AI summary generated successfully")
+                #         return content.strip()
+                self.logger.warning("⚠️ Volcengine API is currently disabled")
+                return None
             
             self.logger.warning("⚠️ API response is empty or invalid")
             return None
@@ -217,15 +259,18 @@ class LLMService:
 # Global LLM service instance
 _llm_service = None
 
-def init_llm_service(api_key: str):
+def init_llm_service(api_key: str, provider: str = "openai", proxy_url: str = None, use_proxy: bool = False):
     """
     Initialize global LLM service instance
     
     Args:
         api_key: API key
+        provider: API provider, "openai" or "volcengine" (default: "openai")
+        proxy_url: Proxy URL (e.g., "http://127.0.0.1:7890")
+        use_proxy: Whether to use proxy (default: False)
     """
     global _llm_service
-    _llm_service = LLMService(api_key)
+    _llm_service = LLMService(api_key, provider, proxy_url, use_proxy)
 
 def get_llm_service() -> LLMService:
     """
