@@ -8,7 +8,7 @@ The SRR (Slope Risk Report) Case Processing System is an AI-powered document pro
 
 ```mermaid
 graph TB
-    A[File Upload Interface] --> B[File Classification Engine]
+    A[Integrated Chat Interface] --> B[File Upload Modal]
     B --> C{File Type Detection}
     
     C -->|TXT Files| D[TXT Processor]
@@ -32,7 +32,7 @@ graph TB
     
     O --> P[Case Type Classifier]
     O --> Q[Subject Matter Classifier]
-    O --> R[Request Summarizer]
+    O --> R[Request Summarizer - LLM]
     O --> S[Location Mapper]
     O --> T[Source Classifier]
     
@@ -43,8 +43,17 @@ graph TB
     T --> U
     
     U --> V[A-Q Column Generator]
-    V --> W[JSON Output]
-    W --> X[Web Interface Display]
+    V --> W[Database Storage]
+    V --> X[Historical Case Matcher]
+    
+    X --> Y[Similarity Search - 5,298 cases]
+    Y --> Z[Location-Slope Learning]
+    Y --> AA[Tree Information Extraction]
+    
+    W --> AB[Chat Interface Display]
+    Y --> AB
+    Z --> AB
+    AA --> AB
 ```
 
 ## 📋 Processing Workflow
@@ -112,7 +121,9 @@ Process Flow:
 - **Training Data**: Historical cases from Excel files
 
 #### 3.3 Request Summarization
-- **Approach**: Doubao API (Volcengine) + Pattern Recognition
+- **Primary**: OpenAI API (gpt-4o-mini) with proxy support
+- **Alternative**: Volcengine Doubao API
+- **Fallback**: Pattern-based extraction (17 regex patterns)
 - **Input**: Email content or PDF text
 - **Output**: Concise one-sentence summary (max 200 characters)
 
@@ -126,9 +137,39 @@ Process Flow:
 - **Categories**: ICC, Telephone, E-mail, RCC, TMO, etc.
 - **Logic**: File type + content analysis + email presence
 
-### Phase 4: Data Structuring
+### Phase 4: Historical Case Matching
 
-#### 4.1 A-Q Column Generation
+#### 4.1 Similarity Search
+- **Data Sources**: 
+  - Slopes Complaints 2021 (4,047 cases)
+  - SRR Data 2021-2024 (1,251 cases)
+  - Tree Inventory (32,405 trees)
+- **Algorithm**: Weighted multi-criteria matching
+- **Weights**:
+  - Location: 40%
+  - Slope/Tree Number: 30%
+  - Subject Matter: 15%
+  - Caller Name: 10%
+  - Phone Number: 5%
+
+#### 4.2 Duplicate Detection
+- **Threshold**: ≥ 70% similarity score
+- **Purpose**: Identify recurring issues and potential duplicates
+- **Output**: List of similar cases with match scores
+
+#### 4.3 Location-Slope Learning
+- **Auto-Learning**: 403 location-slope mappings
+- **Purpose**: Handle address variations
+- **Method**: Extract from historical complaint records
+
+#### 4.4 Tree Information Extraction
+- **Source**: Remarks column (AZ) from Excel
+- **Extracted Data**: Tree ID, count, inspector remarks
+- **Integration**: Link to tree inventory database
+
+### Phase 5: Data Structuring
+
+#### 5.1 A-Q Column Generation
 ```python
 Standard Output Format:
 A: Date Received (dd-MMM-yyyy)
@@ -147,10 +188,15 @@ M: ICC Final Due (A + 21 calendar days)
 N-Q: Additional fields
 ```
 
-#### 4.2 Data Validation
+#### 5.2 Data Validation
 - **Date Format Standardization**: All dates to dd-MMM-yyyy
 - **Field Completeness Check**: Required fields validation
 - **Data Type Verification**: Ensure correct data types
+
+#### 5.3 Database Storage
+- **Storage**: SQLite database (srr_cases.db)
+- **Purpose**: Current case management and query
+- **Note**: Excluded from similarity search to avoid self-matching
 
 ## 🤖 AI Model Architecture
 
@@ -178,9 +224,13 @@ N-Q: Additional fields
 ```
 
 ### Training Data Sources
-- **Historical Cases**: 8,284 records from Excel files
+- **Historical Cases**: 5,298 searchable records (Excel/CSV)
+  - Slopes Complaints 2021: 4,047 cases
+  - SRR Data 2021-2024: 1,251 cases
+- **Tree Inventory**: 32,405 trees with location data
 - **SRR Rules**: Domain-specific classification rules
-- **Slope Data**: 1,903 location mappings
+- **Location Mappings**: 403 auto-learned from historical data
+- **Database**: Current cases (excluded from similarity search)
 
 ## 🔄 Performance Optimization
 
@@ -188,12 +238,16 @@ N-Q: Additional fields
 - **TXT Files**: < 5 seconds
 - **TMO PDFs**: < 60 seconds
 - **RCC PDFs**: < 120 seconds
+- **Similarity Search**: < 2 seconds (5,298 cases)
+- **Historical Data Loading**: 2-3 seconds (startup)
 
 ### Optimization Strategies
 1. **Model Caching**: Avoid redundant model loading
-2. **Fast OCR**: Reduced resolution for speed
-3. **Parallel Processing**: Concurrent file handling
-4. **Smart Fallbacks**: Graceful degradation
+2. **Historical Data Caching**: Load once at startup, keep in memory
+3. **Fast OCR**: Reduced resolution for speed
+4. **Parallel Processing**: Concurrent file handling
+5. **Smart Fallbacks**: Graceful degradation
+6. **Database Exclusion**: Avoid unnecessary similarity searches on current cases
 
 ## 📊 Quality Assurance
 
@@ -201,6 +255,8 @@ N-Q: Additional fields
 - **Case Type Classification**: 92% accuracy
 - **Subject Matter Classification**: 98% accuracy
 - **OCR Text Recognition**: Variable (depends on image quality)
+- **Similarity Matching**: High precision with weighted scoring
+- **Location-Slope Mapping**: 403 verified associations
 
 ### Error Handling
 - **Graceful Degradation**: System continues with partial data
@@ -241,15 +297,26 @@ React Application
 
 ### Environment Variables
 ```python
+# Required
+OPENAI_API_KEY = "sk-..."          # OpenAI API key (primary)
+ARK_API_KEY = "..."                # Volcengine API key (alternative)
+
+# Optional
 API_HOST = "localhost"
-API_PORT = 8001  # Updated port
+API_PORT = 8001
 FRONTEND_PORT = 3000
-MODEL_CACHE_TIMEOUT = 1800  # 30 minutes
-OCR_TIMEOUT = 120  # 2 minutes
-ARK_API_KEY = "doubao_api_key"  # Volcengine API key
+LLM_PROVIDER = "openai"            # openai or volcengine
+OPENAI_PROXY_URL = "socks5://localhost:7890"  # Proxy URL
+OPENAI_USE_PROXY = "true"          # Enable proxy
+MODEL_CACHE_TIMEOUT = 1800         # 30 minutes
+OCR_TIMEOUT = 120                  # 2 minutes
 ```
 
 ### Data Dependencies
+- **data/Slopes Complaints...xlsx**: Historical complaints (4,047 cases)
+- **data/SRR data 2021-2024.csv**: Historical SRR data (1,251 cases)
+- **data/Tree inventory.xlsx**: Tree database (32,405 trees)
+- **data/srr_cases.db**: SQLite database (current cases)
 - **models/mapping_rules/slope_location_mapping.json**: Cached location mappings
 - **models/ai_models/training_data.pkl**: Cached training data
 - **models/config/srr_rules.json**: Cached classification rules
@@ -272,10 +339,12 @@ ARK_API_KEY = "doubao_api_key"  # Volcengine API key
 
 ### Planned Features
 1. **Advanced OCR**: Better handling of complex layouts
-2. **Multi-language Support**: Chinese text processing
+2. **Multi-language Support**: Enhanced Chinese text processing
 3. **Real-time Processing**: WebSocket-based updates
-4. **Advanced Analytics**: Trend analysis and reporting
-5. **API Integration**: External system connectivity
+4. **Advanced Analytics**: Temporal trend analysis and pattern detection
+5. **Geographic Visualization**: Map-based complaint clustering
+6. **Predictive Analytics**: Forecast future complaints based on historical patterns
+7. **API Integration**: External system connectivity
 
 ### Scalability Considerations
 - **Microservices Architecture**: Separate processing services
@@ -298,5 +367,8 @@ ARK_API_KEY = "doubao_api_key"  # Volcengine API key
 - **API Errors**: Check logs and error handling
 
 ---
+
+**Last Updated**: 2025-10-19  
+**Version**: 2.0
 
 This workflow design provides a comprehensive overview of the SRR Case Processing System, covering all aspects from file ingestion to final output generation. The system is designed for reliability, accuracy, and scalability while maintaining high performance standards.

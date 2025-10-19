@@ -447,4 +447,7 @@ For deployment issues or questions, contact the development team with:
 
 ---
 
+**Last Updated**: 2025-10-19  
+**Version**: 1.0
+
 This deployment guide covers the essential steps for getting the SRR Case Processing System running in production. Follow the security and monitoring recommendations for a robust deployment.

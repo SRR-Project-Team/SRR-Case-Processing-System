@@ -87,7 +87,16 @@ async def startup_event():
     """应用启动事件"""
     # initializeLLMservice
     from src.services.llm_service import init_llm_service
-    init_llm_service(LLM_API_KEY)
+    from config.settings import LLM_PROVIDER, OPENAI_PROXY_URL, OPENAI_USE_PROXY
+    init_llm_service(LLM_API_KEY, LLM_PROVIDER, OPENAI_PROXY_URL, OPENAI_USE_PROXY)
+    
+    # Initialize historical case matcher (integrates Excel/CSV historical data)
+    from src.services.historical_case_matcher import init_historical_matcher
+    import os
+    data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data')
+    db_path = os.path.join(data_dir, 'srr_cases.db')
+    init_historical_matcher(data_dir, db_path)
+    print("✅ Historical case matcher initialized with Excel/CSV data")
 
 # create临时目录
 # 用于storageupload的file，process完成后automaticcleanup
@@ -574,6 +583,174 @@ async def search_cases(q: str):
     """搜索案件"""
     cases = db_manager.search_cases(q)
     return {"cases": cases, "query": q}
+
+@app.post("/api/find-similar-cases")
+async def find_similar_cases(case_data: dict):
+    """
+    Find similar historical cases based on current case information
+    Searches ONLY historical Excel/CSV data (database excluded):
+    - Slopes Complaints 2021 (4,047 cases)
+    - SRR data 2021-2024 (1,251 cases)
+    Total: 5,298 historical cases
+    
+    Args:
+        case_data: Dictionary containing case information to match against
+        
+    Returns:
+        dict: Similar cases with similarity scores and match details
+    """
+    try:
+        from src.services.historical_case_matcher import get_historical_matcher
+        
+        matcher = get_historical_matcher()
+        
+        # Get parameters
+        limit = case_data.get('limit', 10)
+        min_similarity = case_data.get('min_similarity', 0.3)
+        
+        # Find similar cases across all historical data
+        similar_cases = matcher.find_similar_cases(
+            current_case=case_data,
+            limit=limit,
+            min_similarity=min_similarity
+        )
+        
+        return {
+            "status": "success",
+            "total_found": len(similar_cases),
+            "similar_cases": similar_cases,
+            "search_criteria": {
+                "location": case_data.get('H_location'),
+                "slope_no": case_data.get('G_slope_no'),
+                "caller_name": case_data.get('E_caller_name'),
+                "subject_matter": case_data.get('J_subject_matter')
+            },
+            "data_sources": {
+                "slopes_complaints_2021": "4,047 cases",
+                "srr_data_2021_2024": "1,251 cases",
+                "total_searchable": "5,298 historical cases (database excluded)"
+            }
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "status": "error",
+            "message": f"Failed to find similar cases: {str(e)}"
+        }
+
+
+@app.get("/api/case-statistics")
+async def get_case_statistics(
+    location: str = None,
+    slope_no: str = None,
+    venue: str = None
+):
+    """
+    Get comprehensive statistics from historical Excel/CSV data ONLY
+    Searches across (database excluded):
+    - Slopes Complaints 2021 (4,047 cases)
+    - SRR data 2021-2024 (1,251 cases)
+    Total: 5,298 historical cases
+    
+    Query parameters:
+        location: Location to filter by
+        slope_no: Slope number to filter by
+        venue: Venue name to filter by
+        
+    Returns:
+        dict: Comprehensive statistics from historical data only
+    """
+    try:
+        from src.services.historical_case_matcher import get_historical_matcher
+        
+        matcher = get_historical_matcher()
+        
+        stats = matcher.get_case_statistics(
+            location=location,
+            slope_no=slope_no,
+            venue=venue
+        )
+        
+        return {
+            "status": "success",
+            "statistics": stats
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "status": "error",
+            "message": f"Failed to get statistics: {str(e)}"
+        }
+
+
+@app.get("/api/tree-info")
+async def get_tree_info(slope_no: str):
+    """
+    Get tree information for a specific slope
+    Searches tree inventory (32405 trees)
+    
+    Query parameters:
+        slope_no: Slope number to search for
+        
+    Returns:
+        dict: List of trees on the slope with details
+    """
+    try:
+        from src.services.historical_case_matcher import get_historical_matcher
+        
+        matcher = get_historical_matcher()
+        trees = matcher.get_tree_info(slope_no)
+        
+        return {
+            "status": "success",
+            "slope_no": slope_no,
+            "total_trees": len(trees),
+            "trees": trees
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to get tree information: {str(e)}"
+        }
+
+
+@app.get("/api/location-slopes")
+async def get_location_slopes(location: str):
+    """
+    Get slope numbers associated with a location
+    Uses historical learning from 5,298 cases
+    
+    Query parameters:
+        location: Location name or partial match
+        
+    Returns:
+        dict: List of slope numbers found at this location
+    """
+    try:
+        from src.services.historical_case_matcher import get_historical_matcher
+        
+        matcher = get_historical_matcher()
+        slopes = matcher.get_slopes_for_location(location)
+        
+        return {
+            "status": "success",
+            "location": location,
+            "total_slopes": len(slopes),
+            "slopes": slopes,
+            "note": "Learned from historical complaint records"
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to get slopes for location: {str(e)}"
+        }
+
 
 @app.get("/health")
 def health_check():

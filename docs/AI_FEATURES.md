@@ -122,4 +122,4 @@ results = reader.readtext(image)
 
 **作者**: Project3 Team  
 **版本**: 2.0  
-**更新时间**: 2025-01-15
+**Last Updated**: 2025-10-19

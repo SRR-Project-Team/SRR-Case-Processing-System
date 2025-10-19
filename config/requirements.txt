@@ -23,6 +23,10 @@ opencv-python==4.8.1.78
 transformers==4.35.2
 torch==2.1.1
 
+# LLM API
+openai==1.12.0
+# volcenginesdkarkruntime==0.1.0  # Volcengine API (kept for future use)
+
 # HTTP客户端 (用于演示脚本)
 requests==2.31.0
 

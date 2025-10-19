@@ -130,11 +130,58 @@ export const queryCase = async (request: QueryRequest): Promise<string> => {
   }
 };
 
+// Find similar cases API
+export const findSimilarCases = async (caseData: any, limit: number = 10, minSimilarity: number = 0.3): Promise<any> => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/api/find-similar-cases`, {
+      ...caseData,
+      limit,
+      min_similarity: minSimilarity
+    }, {
+      timeout: 30000 // 30 seconds timeout
+    });
+    
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(error.response?.data?.message || error.message || 'Failed to find similar cases');
+    }
+    throw new Error('Network connection failed');
+  }
+};
+
+// Get case statistics API
+export const getCaseStatistics = async (filters: {
+  location?: string;
+  slope_no?: string;
+  caller_name?: string;
+}): Promise<any> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.location) params.append('location', filters.location);
+    if (filters.slope_no) params.append('slope_no', filters.slope_no);
+    if (filters.caller_name) params.append('caller_name', filters.caller_name);
+    
+    const response = await axios.get(`${API_BASE_URL}/api/case-statistics?${params.toString()}`, {
+      timeout: 30000
+    });
+    
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(error.response?.data?.message || error.message || 'Failed to get statistics');
+    }
+    throw new Error('Network connection failed');
+  }
+};
+
 const apiService = {
   processFile,
   processMultipleFiles,
   healthCheck,
   queryCase,
+  findSimilarCases,
+  getCaseStatistics,
 };
 
 export default apiService;
