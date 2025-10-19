@@ -86,8 +86,23 @@ class HistoricalCaseMatcher:
             # Load Slopes Complaints 2021
             slopes_file = os.path.join(self.data_dir, 'Slopes Complaints & Enquires Under             TC K928   4-10-2021.xlsx')
             if os.path.exists(slopes_file):
-                self.slopes_complaints = pd.read_excel(slopes_file)
-                print(f"📂 Loaded Slopes Complaints: {len(self.slopes_complaints)} records")
+                # Read Excel and clean data
+                df = pd.read_excel(slopes_file)
+                
+                # Remove completely empty rows
+                df = df.dropna(how='all')
+                
+                # Remove rows where key columns are all null
+                key_cols = ['Received \nDate', 'Case No. ', 'Venue', 'District']
+                existing_key_cols = [col for col in key_cols if col in df.columns]
+                if existing_key_cols:
+                    df = df.dropna(subset=existing_key_cols, how='all')
+                
+                # Drop unnecessary 'Unnamed' columns to reduce memory
+                df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
+                
+                self.slopes_complaints = df
+                print(f"📂 Loaded Slopes Complaints: {len(self.slopes_complaints)} records (cleaned)")
             
             # Load SRR Data 2021-2024
             srr_file = os.path.join(self.data_dir, 'SRR data 2021-2024.csv')
@@ -97,14 +112,35 @@ class HistoricalCaseMatcher:
                     result = chardet.detect(f.read())
                     encoding = result['encoding']
                 
-                self.srr_data = pd.read_csv(srr_file, encoding=encoding)
-                print(f"📂 Loaded SRR Data: {len(self.srr_data)} records")
+                # Read CSV and clean data
+                df = pd.read_csv(srr_file, encoding=encoding)
+                
+                # Remove completely empty rows
+                df = df.dropna(how='all')
+                
+                # Remove rows where key columns are all null
+                key_cols = ['Received \nDate', 'Source', 'District']
+                existing_key_cols = [col for col in key_cols if col in df.columns]
+                if existing_key_cols:
+                    df = df.dropna(subset=existing_key_cols, how='all')
+                
+                self.srr_data = df
+                print(f"📂 Loaded SRR Data: {len(self.srr_data)} records (cleaned)")
             
             # Load Tree Inventory
             tree_file = os.path.join(self.data_dir, 'Tree inventory.xlsx')
             if os.path.exists(tree_file):
-                self.tree_inventory = pd.read_excel(tree_file)
-                print(f"📂 Loaded Tree Inventory: {len(self.tree_inventory)} trees")
+                # Read Excel and clean data
+                df = pd.read_excel(tree_file)
+                
+                # Remove completely empty rows
+                df = df.dropna(how='all')
+                
+                # Drop unnecessary 'Unnamed' columns
+                df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
+                
+                self.tree_inventory = df
+                print(f"📂 Loaded Tree Inventory: {len(self.tree_inventory)} trees (cleaned)")
             
             # Count database cases (but don't load for searching)
             if os.path.exists(self.db_path):
@@ -320,7 +356,7 @@ class HistoricalCaseMatcher:
         return total_score, match_details
     
     def _match_location(self, loc1: str, loc2: str) -> float:
-        """Fuzzy match locations with 70% threshold"""
+        """Fuzzy match locations (returns actual similarity ratio)"""
         if not loc1 or not loc2:
             return 0.0
         
@@ -331,8 +367,8 @@ class HistoricalCaseMatcher:
         # Use SequenceMatcher for fuzzy matching
         similarity = SequenceMatcher(None, l1, l2).ratio()
         
-        # Apply threshold
-        return similarity if similarity >= 0.70 else 0.0
+        # Return actual similarity (no threshold here, threshold applied to total_score)
+        return similarity
     
     def _match_slope_tree(self, slope1: str, slope2: str) -> float:
         """Exact or normalized match for slope/tree numbers"""
@@ -362,7 +398,7 @@ class HistoricalCaseMatcher:
         return intersection / union if union > 0 else 0.0
     
     def _match_caller_name(self, name1: str, name2: str) -> float:
-        """Fuzzy match caller names with 80% threshold"""
+        """Fuzzy match caller names (returns actual similarity ratio)"""
         if not name1 or not name2:
             return 0.0
         
@@ -371,7 +407,8 @@ class HistoricalCaseMatcher:
         
         similarity = SequenceMatcher(None, n1, n2).ratio()
         
-        return similarity if similarity >= 0.80 else 0.0
+        # Return actual similarity (threshold applied to total_score)
+        return similarity
     
     def _match_phone(self, phone1: str, phone2: str) -> float:
         """Exact or last 8 digits match for phone numbers"""
