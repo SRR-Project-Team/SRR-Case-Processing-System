@@ -176,17 +176,17 @@ body {
   justify-content: center;
   font-size: 14px;
   font-weight: bold;
+  overflow: hidden;
 }
 
-.message.user .message-avatar {
-  background: #667eea;
-  color: white;
+.avatar-image {
+  width: 150%;
+  height: 150%;
+  object-fit: cover;  /* 确保图片填充整个圆形区域 */
+  object-position: 0px 7px;
+  border-radius: 50%;
 }
 
-.message.bot .message-avatar {
-  background: #f0f0f0;
-  color: #666;
-}
 
 .chat-input {
   padding: 20px;

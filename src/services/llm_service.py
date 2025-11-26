@@ -84,10 +84,69 @@ class LLMService:
                 return None
             
             # Build request message
-            message = f'''Summarize the text with key elements(case type, caller name and etc) in a natural and fluent sentence. 
-            In addition, the summary should include the short answer of the duration of the case open up to end date or now, 
-            the number of departments it has been handled by, and whether it falls under the responsibility of the slope and tree maintenance department.
-            No more than {max_length} words.:\n\n{text[:9000]} '''  # Limit text length
+            # message = f'''Summarize the text with key elements(case type, caller name and etc) in a natural and fluent sentence. 
+            # In addition, the summary should include the short answer of the duration of the case open up to end date or now, 
+            # the number of departments it has been handled by, and whether it falls under the responsibility of the slope and tree maintenance department.
+            # No more than {max_length} words.:\n\n{text[:9000]} '''  # Limit text length
+                        
+            message = f"""你是一个专业的文档信息提取助手。请从以下文档中提取SRR (Slope Repair Request) 表单所需的所有信息。
+
+            文本：
+            {text}
+
+            请提取以下字段并以JSON格式返回:
+
+            必填字段 (A-Q):
+            - A_date_received: 接收日期 (格式: YYYY-MM-DD)
+            - B_source: 来源 (1823/TMO/RCC/其他)
+            - C_case_number: 案件编号/1823案件号
+            - D_type: 类型 (Emergency/Urgent/General)
+            - E_name_of_caller: 来电者姓名
+            - F_contact_no: 联系电话/邮箱
+            - G_slope_no: 斜坡编号 (Slope No.)
+            - H_location: 地点描述
+            - I_nature_of_request: 请求性质摘要
+            - J_subject_matter: 主题 (从预定义列表选择: Drainage Blockage/Endangered Tree/Fallen Tree/Hazardous tree/Landslide/Water Seepage/Others等)
+            - K_ten_day_due_date: 留空,将自动计算
+            - L_icc_interim_reply_due: ICC临时回复截止日期
+            - M_icc_final_reply_due: ICC最终回复截止日期
+            - N_works_completion_due: 留空,将自动计算
+            - O1_fax_to_contractor_on: 传真给承包商日期
+            - O2_email_send_time: 邮件发送时间
+            - P_fax_pages: 传真页数
+            - Q_case_details: 案件详细摘要
+
+            特殊规则:
+            1. 如果来源(B)是TMO: E姓名格式为 "{{Name}} of TMO (DEVB)", F联系方式为 "TMO (DEVB)"
+            2. 如果来源(B)是1823: 从联系信息中提取姓名和电话/邮箱
+            3. 如果来源(B)是RCC: 从传真文件中提取信息
+            4. 如果投诉人匿名,E和F填"NA"
+            5. 日期格式统一为 YYYY-MM-DD
+            6. 所有文本內容保持原語言，请不要进行多余的翻译，特别是对于Q案件详情字段的内容（繁體中文、英文等）
+            7. 请只返回JSON格式的数据,不要包含其他说明文字。如果某些信息无法从文档中获取,该字段值设为空字符串 ""。
+
+            JSON格式示例:
+            {{
+            "A_date_received": "2025-04-23",
+            "B_source": "1823",
+            "C_case_number": "3-8703304706",
+            "D_type": "Urgent",
+            "E_name_of_caller": "Chan Tai Man",
+            "F_contact_no": "98765432",
+            "G_slope_no": "11NE-D/C123",
+            "H_location": "Near 123 Victoria Road, Kennedy Town",
+            "I_nature_of_request": "Tree fallen on slope",
+            "J_subject_matter": "Fallen Tree",
+            "K_ten_day_due_date": "",
+            "L_icc_interim_reply_due": "",
+            "M_icc_final_reply_due": "",
+            "N_works_completion_due": "",
+            "O1_fax_to_contractor_on": "",
+            "O2_email_send_time": "",
+            "P_fax_pages": "",
+            "Q_case_details": "A large tree has fallen..."
+            }}
+            """
             
             # Call API based on provider
             if self.provider == "openai":

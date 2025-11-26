@@ -6,6 +6,8 @@ import logoImage from '../images/system_logo.png';
 import universityLogo from '../images/university_logo.png';
 import FileUploadModal from './FileUploadModal';
 import FileInfoModal from './FileInfoModal'; 
+import botIcon from '../images/bot_icon.jpeg';  
+import userIcon from '../images/user_icon.jpeg';  
 
 const ChatbotInterface: React.FC = () => {
   const [chatState, setChatState] = useState<ChatState>({
@@ -453,7 +455,7 @@ ${failedFiles.map(f => `• ${f.filename}: ${f.message}`).join('\n')}`;
             <div key={message.id} className={`message ${message.type}`}>
               {message.type === 'bot' && (
                 <div className="message-avatar">
-                  <Bot size={16} />
+                    <img src={botIcon} alt="Bot" className="avatar-image" />
                 </div>
               )}
               <div className="message-content">
@@ -473,7 +475,7 @@ ${failedFiles.map(f => `• ${f.filename}: ${f.message}`).join('\n')}`;
               </div>
               {message.type === 'user' && (
                 <div className="message-avatar">
-                  <User size={16} />
+                    <img src={userIcon} alt="User" className="avatar-image" />
                 </div>
               )}
             </div>
@@ -482,7 +484,7 @@ ${failedFiles.map(f => `• ${f.filename}: ${f.message}`).join('\n')}`;
           {chatState.isLoading && (
             <div className="message bot">
               <div className="message-avatar">
-                <Bot size={16} />
+                <img src={botIcon} alt="Bot" className="avatar-image" />
               </div>
               <div className="message-content">
                 <div className="loading">
