@@ -57,10 +57,7 @@ from database import get_db_manager  # data库管理器
 db_manager = get_db_manager()
 
 # importLLMservice
-import sys
-import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from src.services.llm_service import get_llm_service
+from services.llm_service import get_llm_service
 from config.settings import LLM_API_KEY
 
 # createFastAPI应用instance
@@ -86,12 +83,12 @@ app.add_middleware(
 async def startup_event():
     """应用启动事件"""
     # initializeLLMservice
-    from src.services.llm_service import init_llm_service
+    from services.llm_service import init_llm_service
     from config.settings import LLM_PROVIDER, OPENAI_PROXY_URL, OPENAI_USE_PROXY
     init_llm_service(LLM_API_KEY, LLM_PROVIDER, OPENAI_PROXY_URL, OPENAI_USE_PROXY)
     
     # Initialize historical case matcher (integrates Excel/CSV historical data)
-    from src.services.historical_case_matcher import init_historical_matcher
+    from services.historical_case_matcher import init_historical_matcher
     import os
     data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data')
     db_path = os.path.join(data_dir, 'srr_cases.db')
