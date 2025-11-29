@@ -70,9 +70,21 @@ app = FastAPI(
 
 # configurationCORSmiddleware
 # 允许前端应用（React）CORS访问API
+# 从环境变量读取允许的源，支持开发和生产环境
+# 格式：CORS_ALLOWED_ORIGINS="http://localhost:3000,https://your-firebase-app.web.app"
+cors_allowed_origins_env = os.getenv("CORS_ALLOWED_ORIGINS", "")
+if cors_allowed_origins_env:
+    # 从环境变量解析多个源（逗号分隔）
+    allowed_origins = [origin.strip() for origin in cors_allowed_origins_env.split(",") if origin.strip()]
+else:
+    # 默认允许本地开发地址
+    allowed_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+print(f"🌐 CORS允许的源: {allowed_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # 前端开发service器地址
+    allow_origins=allowed_origins,  # 从环境变量读取的前端地址（开发和生产环境）
     allow_credentials=True,  # 允许携带认证information
     allow_methods=["*"],  # 允许所有HTTPmethod（GET、POST等）
     allow_headers=["*"],  # 允许所有请求头
