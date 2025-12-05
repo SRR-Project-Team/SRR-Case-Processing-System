@@ -143,7 +143,53 @@ gcloud run services list --project=festive-canto-479603-q1
 
 ## 🐛 故障排除
 
-### 问题 1: 认证失败
+### 问题 1: 认证失败 - "must specify exactly one of workload_identity_provider or credentials_json"
+
+**错误信息**: 
+```
+Error: google-github-actions/auth failed with: the GitHub Action workflow must specify exactly one of "workload_identity_provider" or "credentials_json"!
+```
+
+**可能原因**:
+1. `GCP_SA_KEY` secret 未设置或为空
+2. Secret 名称拼写错误
+3. Secret 值格式不正确（不是有效的 JSON）
+
+**解决方案**:
+
+**步骤 1: 检查 Secret 是否存在**
+1. 进入 GitHub 仓库 → **Settings** → **Secrets and variables** → **Actions**
+2. 确认以下 secrets 存在：
+   - ✅ `GCP_PROJECT_ID`
+   - ✅ `GCP_SA_KEY`
+
+**步骤 2: 验证 Secret 值**
+- `GCP_PROJECT_ID` 应该是：`festive-canto-479603-q1`
+- `GCP_SA_KEY` 应该是完整的 JSON 内容（从 `{` 开始到 `}` 结束）
+
+**步骤 3: 重新设置 Secret（如果需要）**
+1. 删除现有的 `GCP_SA_KEY` secret
+2. 从本地密钥文件复制完整内容：
+   ```bash
+   cat github-actions-key.json
+   ```
+3. 在 GitHub 中创建新的 `GCP_SA_KEY` secret
+4. 粘贴完整的 JSON 内容（确保没有多余的空格或换行）
+
+**步骤 4: 验证 JSON 格式**
+确保 JSON 格式正确：
+- 以 `{` 开头
+- 以 `}` 结尾
+- 包含 `"type": "service_account"`
+- 包含 `"project_id": "festive-canto-479603-q1"`
+
+**步骤 5: 检查 Workflow 文件**
+确认 workflow 文件中使用的是正确的 secret 名称：
+```yaml
+credentials_json: ${{ secrets.GCP_SA_KEY }}
+```
+
+### 问题 2: 认证失败 - Permission denied
 
 **错误信息**: `Permission denied` 或 `Authentication failed`
 

@@ -23,3 +23,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_SRR_PROJECT_DEMO }}
           channelId: live
           projectId: srr-project-demo
+          entryPoint: ./frontend

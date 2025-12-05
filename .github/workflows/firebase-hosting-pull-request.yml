@@ -21,3 +21,4 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_SRR_PROJECT_DEMO }}
           projectId: srr-project-demo
+          entryPoint: ./frontend
