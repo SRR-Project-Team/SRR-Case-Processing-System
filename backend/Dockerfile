@@ -30,10 +30,8 @@ EXPOSE 8080
 # 设置 Python 路径，确保能导入项目模块
 ENV PYTHONPATH=/app
 
-# 复制启动脚本
-COPY start_server.sh /app/start_server.sh
+# 确保启动脚本有执行权限（已通过 COPY . . 复制）
 RUN chmod +x /app/start_server.sh
-
 
 # 启动命令：明确使用 sh 执行脚本，避免 exec format error
 CMD ["/bin/sh", "/app/start_server.sh"]

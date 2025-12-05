@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Upload, FileText, Bot, User } from 'lucide-react';
+import { Send, Upload, FileText } from 'lucide-react';
 import { Message, ChatState, FileSummary } from '../types';
 import { processFile, processMultipleFiles, queryCase, findSimilarCases, getCaseStatistics, BatchProcessingResponse } from '../services/api';
 import logoImage from '../images/system_logo.png'; 
