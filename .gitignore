@@ -78,12 +78,12 @@ logs/
 *.bak
 
 # AI Models Cache
-models/
-*.pkl
-*.model
+# models/
+# *.pkl
+# *.model
 
 # OCR Cache
-ocr_cache/
+# ocr_cache/
 
 # Test files
 test_*.py

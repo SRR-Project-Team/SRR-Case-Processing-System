@@ -26,6 +26,8 @@ const ChatbotInterface: React.FC = () => {
 
   const [inputMessage, setInputMessage] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  // Ensure each message has a unique, stable ID for React list keys
+  const messageIdRef = useRef<number>(2); // start after initial message with id '1'
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [summaryResult, setSummaryResult] = useState<FileSummary | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -44,7 +46,7 @@ const ChatbotInterface: React.FC = () => {
   // Add message
   const addMessage = (type: 'user' | 'bot', content: string, fileInfo?: any) => {
     const newMessage: Message = {
-      id: Date.now().toString(),
+      id: (messageIdRef.current++).toString(),
       type,
       content,
       timestamp: new Date(),

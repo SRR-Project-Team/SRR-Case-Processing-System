@@ -30,6 +30,7 @@ import PyPDF2
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.file_utils import extract_text_from_pdf_fast
 
 from ai.ai_case_type_classifier import classify_case_type_ai
 from ai.ai_subject_matter_classifier import classify_subject_matter_ai
@@ -38,48 +39,6 @@ from utils.slope_location_mapper import get_location_from_slope_no
 from utils.source_classifier import classify_source_smart
 
 
-def extract_text_from_pdf_fast(pdf_path: str) -> str:
-    """
-    快速PDF文本extract，优先速度
-    """
-    content = ""
-    
-    # method1: 使用pdfplumber (通常最快)
-    try:
-        with pdfplumber.open(pdf_path) as pdf:
-            for page in pdf.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    content += page_text + "\n"
-        if content.strip():
-            print(f"✅ pdfplumber快速extractsuccess: {len(content)}字符")
-            return content
-    except Exception as e:
-        print(f"⚠️ pdfplumberextractfailed: {e}")
-    
-    # method2: 使用PyPDF2 (备选)
-    try:
-        with open(pdf_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
-            for page_num in range(len(pdf_reader.pages)):
-                page = pdf_reader.pages[page_num]
-                page_text = page.extract_text()
-                if page_text:
-                    content += page_text + "\n"
-        if content.strip():
-            print(f"✅ PyPDF2快速extractsuccess: {len(content)}字符")
-            return content
-    except Exception as e:
-        print(f"⚠️ PyPDF2extractfailed: {e}")
-    
-    print("⚠️ 快速PDFextractfailed，回退到AI增强process")
-    # 回退到AI增强process
-    try:
-        from ai_enhanced_processor import get_ai_enhanced_content
-        return get_ai_enhanced_content(pdf_path)
-    except Exception as e:
-        print(f"⚠️ AI增强process也failed: {e}")
-        return ""
 
 
 def parse_date(date_str: str) -> Optional[datetime]:
@@ -425,55 +384,9 @@ def extract_follow_up_actions(content: str) -> str:
 # 注意：get_location_from_slope_no function现在从 slope_location_mapper moduleimport
 
 
-def get_ai_enhanced_content(pdf_path: str) -> str:
-    """
-    获取AI增强的PDFtext content
-    
-    Args:
-        pdf_path (str): PDFfile path
-        
-    Returns:
-        str: AI增强的text content
-    """
-    try:
-        from ai_enhanced_processor import get_ai_enhanced_text
-        
-        # 使用AI增强process器
-        enhanced_content = get_ai_enhanced_text(pdf_path, "tmo")
-        
-        if enhanced_content:
-            print(f"✅ TMO AI增强processsuccess，文本长度: {len(enhanced_content)} 字符")
-            return enhanced_content
-        else:
-            print("⚠️ TMO AI增强process未return内容，使用原始method")
-            # 回退到原始method
-            return extract_text_from_pdf_traditional(pdf_path)
-                
-    except ImportError:
-        print("⚠️ TMO AI增强process器不可用，使用原始method")
-        # 回退到原始method
-        return extract_text_from_pdf_traditional(pdf_path)
-    except Exception as e:
-        print(f"⚠️ TMO AI增强processfailed: {e}，使用原始method")
-        # 回退到原始method
-        return extract_text_from_pdf_traditional(pdf_path)
 
 
-def extract_text_from_pdf_traditional(pdf_path: str) -> str:
-    """
-    传统PDF文本extractmethod作为备选
-    """
-    try:
-        with pdfplumber.open(pdf_path) as pdf:
-            text = ""
-            for page in pdf.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text += page_text + "\n"
-            return text
-    except Exception as e:
-        print(f"传统PDFextractfailed: {e}")
-        return ""
+
 
 
 def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:

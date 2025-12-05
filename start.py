@@ -34,6 +34,7 @@ import time
 import signal
 import threading
 from pathlib import Path
+os.environ['HTTPS_PROXY'] = 'http://127.0.0.1:7890'
 
 class SRRSystemManager:
     """
@@ -80,7 +81,7 @@ class SRRSystemManager:
             print("✅ Python dependencies OK")
         except ImportError as e:
             print(f"❌ Missing Python dependency: {e}")
-            print("Please run: pip install -r config/requirements.txt")
+            print("Please run: pip install -r backend/config/requirements.txt")
             return False
             
         # Check if Node.js is available
@@ -102,7 +103,7 @@ class SRRSystemManager:
         """Check if required model files exist"""
         print("📊 Checking model files...")
         
-        models_dir = self.project_root / "models"
+        models_dir = self.project_root / "backend" / "models"
         required_files = [
             "ai_models/training_data.pkl",
             "mapping_rules/slope_location_mapping.json",
@@ -281,7 +282,7 @@ class SRRSystemManager:
         """Start the FastAPI backend server"""
         print("🚀 Starting backend server...")
         
-        backend_dir = self.project_root / "src" / "api"
+        backend_dir = self.project_root / "backend" / "src" / "api"
         if not backend_dir.exists():
             print(f"❌ Backend directory not found: {backend_dir}")
             return False
@@ -292,14 +293,14 @@ class SRRSystemManager:
             if self.show_logs:
                 # 显示log模式：不使用PIPE，让log直接输出
                 self.backend_process = subprocess.Popen([
-                    sys.executable, "main.py"
+                    sys.executable, "-u", "main.py"  # -u: unbuffered output
                 ])
                 print("📋 Backend logs will be displayed in real-time")
             else:
-                # 静默模式：使用PIPE重定向log
+                # 静默模式：使用PIPE重定向log，-u参数确保无缓冲输出
                 self.backend_process = subprocess.Popen([
-                    sys.executable, "main.py"
-                ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    sys.executable, "-u", "main.py"  # -u: unbuffered output for immediate log visibility
+                ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
             
             # Wait a moment to check if process started successfully
             time.sleep(3)
@@ -333,20 +334,30 @@ class SRRSystemManager:
             """Monitor backend process logs"""
             try:
                 while self.running and self.backend_process:
-                    # read后端进程的输出
+                    # Read backend process output
                     if self.backend_process.stdout:
-                        line = self.backend_process.stdout.readline()
-                        if line:
-                            print(f"[BACKEND] {line.decode().strip()}")
+                        try:
+                            line = self.backend_process.stdout.readline()
+                            if line:
+                                print(f"[BACKEND] {line.decode('utf-8', errors='replace').rstrip()}", flush=True)
+                        except (BlockingIOError, IOError, ValueError):
+                            pass  # No data available yet or pipe closed
                     
                     if self.backend_process.stderr:
-                        line = self.backend_process.stderr.readline()
-                        if line:
-                            print(f"[BACKEND ERROR] {line.decode().strip()}")
+                        try:
+                            line = self.backend_process.stderr.readline()
+                            if line:
+                                print(f"[BACKEND ERROR] {line.decode('utf-8', errors='replace').rstrip()}", flush=True)
+                        except (BlockingIOError, IOError, ValueError):
+                            pass  # No data available yet or pipe closed
                     
-                    time.sleep(0.1)
+                    # Check if process is still alive
+                    if self.backend_process.poll() is not None:
+                        break
+                    
+                    time.sleep(0.05)  # Reduced sleep time for more responsive logging
             except Exception as e:
-                print(f"Log monitoring error: {e}")
+                print(f"Log monitoring error: {e}", flush=True)
         
         self.log_thread = threading.Thread(target=monitor_logs, daemon=True)
         self.log_thread.start()
@@ -628,6 +639,11 @@ def main():
             print("Log modes:")
             print("  --logs: Show real-time backend and frontend logs")
             print("  default: Show logs in background with [BACKEND]/[FRONTEND] prefixes")
+            print("")
+            print("Debug mode:")
+            print("  Set LOG_LEVEL=DEBUG environment variable to enable debug logging:")
+            print("    LOG_LEVEL=DEBUG python start.py start --logs")
+            print("  This will show all debug-level log messages including file processing details")
             return 0
         
         else:

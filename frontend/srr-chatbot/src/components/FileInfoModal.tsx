@@ -148,7 +148,13 @@ const FileInfoModal: React.FC<FileInfoModalProps> = ({
                 ) : (
                   <div className="summary-error">
                     <AlertCircle size={16} className="error-icon" />
-                    AI summary generation failed
+                    <span>
+                      AI summary generation failed: {
+                        summaryResult.error && summaryResult.error.trim()
+                          ? summaryResult.error
+                          : "Unable to generate summary. Please try again later."
+                      }
+                    </span>
                   </div>
                 )}
               </div>

@@ -165,7 +165,7 @@ LLM_PROVIDER="openai"
 
 # Proxy (if needed)
 OPENAI_PROXY_URL="socks5://localhost:7890"
-OPENAI_USE_PROXY="true"
+="true"
 
 # Volcengine (Alternative)
 ARK_API_KEY="your-key"

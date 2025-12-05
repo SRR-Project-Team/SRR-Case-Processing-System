@@ -20,9 +20,6 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001';
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 120000, // 120 seconds timeout (2 minutes) - reserved for RCC OCR processing
-  headers: {
-    'Content-Type': 'multipart/form-data',
-  },
 });
 
 // Single file processing API

@@ -94,7 +94,13 @@ const UploadDetailsModal: React.FC<UploadDetailsModalProps> = ({
                 ) : (
                   <div className="summary-error">
                     <AlertCircle className="error-icon" />
-                    <span>Summary generation failed: {summaryResult.error}</span>
+                    <span>
+                      Summary generation failed: {
+                        summaryResult.error && summaryResult.error.trim() 
+                          ? summaryResult.error 
+                          : "Unable to generate summary. Please try again later."
+                      }
+                    </span>
                   </div>
                 )}
               </div>

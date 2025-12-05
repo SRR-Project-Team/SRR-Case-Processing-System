@@ -241,7 +241,7 @@ def generate_nature_summary(content: str) -> str:
     """
     # 直接使用NLP增强技术进行智能summarize
     try:
-        from nlp_enhanced_processor import get_nlp_enhanced_nature_of_request
+        from ai.nlp_enhanced_processor import get_nlp_enhanced_nature_of_request
         
         # check是否有对应的邮件file
         email_content = None
@@ -278,7 +278,7 @@ def generate_nature_summary_from_original(original_content: str) -> str:
         str: 简洁的请求性质摘要
     """
     try:
-        from nlp_enhanced_processor import get_nlp_enhanced_nature_of_request
+        from ai.nlp_enhanced_processor import get_nlp_enhanced_nature_of_request
         
         # check是否有对应的邮件file
         email_content = None

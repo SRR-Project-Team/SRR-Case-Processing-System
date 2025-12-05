@@ -61,20 +61,22 @@ project3/
 ├── 📋 README.md                   # This file
 ├── 📚 FEATURES.md                 # Feature reference guide
 ├── 📖 HOW_TO_USE.md               # User guide
-├── src/                           # Source code
-│   ├── api/                      # FastAPI backend
-│   ├── core/                     # Document processors (TXT/TMO/RCC)
-│   ├── ai/                       # AI/ML classifiers
-│   ├── services/                 # Business logic services
-│   │   ├── historical_case_matcher.py  # Similarity matching
-│   │   └── llm_service.py              # OpenAI/Volcengine API
-│   ├── database/                 # Database management
-│   └── utils/                    # Utility functions
-├── frontend/srr-chatbot/         # React web interface
-├── data/                          # Historical data (5,298 cases + 32,405 trees)
-├── config/                        # Configuration files
-├── docs/                          # Technical documentation (9 guides)
-└── models/                        # AI models and rules
+├── backend/                      # React web interface
+│   ├── src/                           # Source code
+│   │   ├── api/                      # FastAPI backend
+│   │   ├── core/                     # Document processors (TXT/TMO/RCC)
+│   │   ├── ai/                       # AI/ML classifiers
+│   │   ├── services/                 # Business logic services
+│   │   │   ├── historical_case_matcher.py  # Similarity matching
+│   │   │   └── llm_service.py              # OpenAI/Volcengine API
+│   │   ├── database/                 # Database management
+│   │   └── utils/                    # Utility functions
+│   ├── data/                          # Historical data (5,298 cases + 32,405 trees)
+│   ├── config/                        # Configuration files
+│   ├── docs/                          # Technical documentation (9 guides)
+│   └── models/                        # AI models and rules
+└── frontend/srr-chatbot/         # React web interface
+
 ```
 
 ## 📊 Processing Pipeline
