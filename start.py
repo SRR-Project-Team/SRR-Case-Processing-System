@@ -398,17 +398,25 @@ class SRRSystemManager:
             print(f"❌ Frontend directory not found: {frontend_dir}")
             return False
         
-        # Check if node_modules exists
+        # Check if node_modules exists and react-scripts is installed
         node_modules = frontend_dir / "node_modules"
-        if not node_modules.exists():
+        react_scripts = node_modules / ".bin" / "react-scripts"
+        
+        if not node_modules.exists() or not react_scripts.exists():
             print("📦 Installing frontend dependencies...")
             try:
                 os.chdir(frontend_dir)
-                result = subprocess.run(['npm', 'install'], 
+                # Use npm ci for clean install (faster and more reliable)
+                result = subprocess.run(['npm', 'ci'], 
                                       capture_output=True, text=True)
                 if result.returncode != 0:
-                    print(f"❌ npm install failed: {result.stderr}")
-                    return False
+                    # Fallback to npm install if npm ci fails (e.g., no package-lock.json)
+                    print("⚠️ npm ci failed, trying npm install...")
+                    result = subprocess.run(['npm', 'install'], 
+                                          capture_output=True, text=True)
+                    if result.returncode != 0:
+                        print(f"❌ npm install failed: {result.stderr}")
+                        return False
                 print("✅ Frontend dependencies installed")
             except Exception as e:
                 print(f"❌ Error installing dependencies: {e}")
