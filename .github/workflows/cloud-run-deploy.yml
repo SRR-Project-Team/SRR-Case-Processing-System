@@ -55,14 +55,23 @@ jobs:
         with:
           project_id: ${{ env.PROJECT_ID }}
       
-      - name: Deploy to Cloud Run
+      - name: Build and Deploy to Cloud Run
         run: |
+          IMAGE_NAME="gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}"
+          IMAGE_TAG="${IMAGE_NAME}:${GITHUB_SHA::8}"
+          
+          echo "Building Docker image: ${IMAGE_TAG}"
+          gcloud builds submit \
+            --tag ${IMAGE_TAG} \
+            --project ${{ env.PROJECT_ID }} \
+            ./backend
+          
+          echo "Deploying to Cloud Run..."
           gcloud run deploy ${{ env.SERVICE_NAME }} \
-            --source ./backend \
+            --image ${IMAGE_TAG} \
             --platform managed \
             --region ${{ env.REGION }} \
             --allow-unauthenticated \
-            --dockerfile Dockerfile \
             --project ${{ env.PROJECT_ID }} \
             --memory 8Gi \
             --cpu 2 \
