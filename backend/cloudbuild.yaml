@@ -1,0 +1,12 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${_IMAGE_TAG}', '-t', '${_IMAGE_NAME}:latest', '-f', 'Dockerfile', '.']
+
+images:
+  - '${_IMAGE_TAG}'
+  - '${_IMAGE_NAME}:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+

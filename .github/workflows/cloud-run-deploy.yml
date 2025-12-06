@@ -62,7 +62,8 @@ jobs:
           
           echo "Building Docker image: ${IMAGE_TAG}"
           gcloud builds submit \
-            --tag ${IMAGE_TAG} \
+            --config=backend/cloudbuild.yaml \
+            --substitutions=_IMAGE_TAG=${IMAGE_TAG},_IMAGE_NAME=${IMAGE_NAME} \
             --project ${{ env.PROJECT_ID }} \
             ./backend
           
