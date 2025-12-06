@@ -66,7 +66,7 @@ jobs:
             --substitutions=_IMAGE_TAG=${IMAGE_TAG},_IMAGE_NAME=${IMAGE_NAME} \
             --project ${{ env.PROJECT_ID }} \
             --set-build-env-vars="GOOGLE_ENTRYPOINT=gunicorn src.api.main:app --bind 0.0.0.0:\${PORT:-8080} --workers 2 --worker-class uvicorn.workers.UvicornWorker" \
-            ./backend
+            .
           
           echo "Deploying to Cloud Run..."
           gcloud run deploy ${{ env.SERVICE_NAME }} \
