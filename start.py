@@ -412,11 +412,11 @@ class SRRSystemManager:
                 if result.returncode != 0:
                     # Fallback to npm install if npm ci fails (e.g., no package-lock.json)
                     print("⚠️ npm ci failed, trying npm install...")
-                    result = subprocess.run(['npm', 'install'], 
-                                          capture_output=True, text=True)
-                    if result.returncode != 0:
-                        print(f"❌ npm install failed: {result.stderr}")
-                        return False
+                result = subprocess.run(['npm', 'install'], 
+                                      capture_output=True, text=True)
+                if result.returncode != 0:
+                    print(f"❌ npm install failed: {result.stderr}")
+                    return False
                 print("✅ Frontend dependencies installed")
             except Exception as e:
                 print(f"❌ Error installing dependencies: {e}")
