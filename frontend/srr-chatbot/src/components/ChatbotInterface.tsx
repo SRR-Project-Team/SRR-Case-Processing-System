@@ -141,6 +141,7 @@ const ChatbotInterface: React.FC = () => {
 
   // Handle file upload (actual processing of selected files)
   const handleFileUpload = async () => {
+    setIsUploadModalOpen(false);
     const files = selectedFiles;
     if (files.length === 0) {
       addMessage('bot', 'Please select files to process first.');
@@ -313,17 +314,20 @@ const ChatbotInterface: React.FC = () => {
 
           // Clear selected file list
           setSelectedFiles([]);
+          setIsUploadModalOpen(false);
         } else {
           setChatState(prev => ({ ...prev, isLoading: false }));
           addMessage('bot', `File processing failed: ${result.message || result.error || 'Unknown error'}`);
           // Clear file list on failure
           setSelectedFiles([]);
+          setIsUploadModalOpen(false);
         }
       } catch (error) {
         setChatState(prev => ({ ...prev, isLoading: false }));
         addMessage('bot', `Error processing file: ${error instanceof Error ? error.message : 'Unknown error'}`);
         // Clear file list on error
         setSelectedFiles([]);
+        setIsUploadModalOpen(false);
       }
     } 
     // Multi-file batch processing
@@ -388,6 +392,7 @@ ${failedFiles.map(f => `• ${f.filename}: ${f.message}`).join('\n')}`;
         
         // Clear file list after batch processing
         setSelectedFiles([]);
+        setIsUploadModalOpen(false);
         
       } catch (error) {
         setChatState(prev => ({
@@ -399,6 +404,7 @@ ${failedFiles.map(f => `• ${f.filename}: ${f.message}`).join('\n')}`;
         
         // Clear file list on error
         setSelectedFiles([]);
+        setIsUploadModalOpen(false);
       }
     }
   };

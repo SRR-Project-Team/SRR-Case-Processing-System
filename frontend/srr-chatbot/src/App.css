@@ -167,8 +167,8 @@ body {
 }
 
 .message-avatar {
-  width: 32px;
-  height: 32px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   margin: 0 8px;
   display: flex;
@@ -180,10 +180,10 @@ body {
 }
 
 .avatar-image {
-  width: 150%;
-  height: 150%;
+  width: 130%;
+  height: 130%;
   object-fit: cover;  /* 确保图片填充整个圆形区域 */
-  object-position: 0px 7px;
+  object-position: 0px 15px;
   border-radius: 50%;
 }
 
