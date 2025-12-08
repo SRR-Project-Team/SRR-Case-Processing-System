@@ -54,12 +54,15 @@ yarn-error.log*
 # package-lock.json
 .npm
 
-# React Build
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Frontend build artifacts
 frontend/srr-chatbot/build/
-frontend/srr-chatbot/.env.local
-frontend/srr-chatbot/.env.development.local
-frontend/srr-chatbot/.env.test.local
-frontend/srr-chatbot/.env.production.local
 
 # Logs
 *.log
@@ -76,6 +79,8 @@ logs/
 *.tmp
 *.temp
 *.bak
+temp/
+tmp/
 
 # AI Models Cache
 # models/
@@ -95,7 +100,6 @@ exampleInput/
 example_*
 
 # API Keys and Secrets
-.env
 api_keys.txt
 *.key
 github-actions-key.json
