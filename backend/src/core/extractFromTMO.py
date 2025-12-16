@@ -54,12 +54,16 @@ def parse_date(date_str: str) -> Optional[datetime]:
     if not date_str:
         return None
     
-    # 尝试多种日期格式
+    # 尝试多种日期格式（包括Vision API可能返回的格式）
     date_formats = [
+        "%d-%b-%Y",      # "15-Jan-2024" (Vision API常用格式)
+        "%d-%B-%Y",      # "15-January-2024"
+        "%d %b %Y",      # "15 Jan 2024"
         "%d %B %Y",      # "21 January 2025"
         "%Y-%m-%d",      # "2025-01-21"
         "%d/%m/%Y",      # "21/01/2025"
         "%d-%m-%Y",      # "21-01-2025"
+        "%m/%d/%Y",      # "01/21/2025" (US format)
     ]
     
     for fmt in date_formats:
@@ -393,25 +397,8 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
     """
     从TMO PDF文件中extract所有案件data，return字典格式
     
-    这是主要的TMOdataextract函数，按照A-Qfield规则extract：
-    - A: 案件接收日期 (Date of Referral)
-    - B: 来源 (Fromfield)
-    - C: 1823案件号 (TMO Ref.)
-    - D: 案件class型 (根据内容判断)
-    - E: 来电人姓名 (check员)
-    - F: 联系电话 (Contact)
-    - G: 斜坡编号 (从内容中extract)
-    - H: 位置 (从Exceldata获取)
-    - I: 请求性质摘要 (评论information)
-    - J: 事项主题 (Form 2相关)
-    - K: 10天规则截止日期 (A+10天)
-    - L: ICC临时回复截止日期 (不适用)
-    - M: ICC最终回复截止日期 (不适用)
-    - N: 工程完成截止日期 (取决于D)
-    - O1: 发给承包商的传真日期 (通常同A)
-    - O2: 邮件发送时间 (不适用)
-    - P: 传真页数 (PDF页数)
-    - Q: 案件详情 (后续行动)
+    这是主要的TMOdataextract函数，使用通用的PDF提取函数（合并了RCC和TMO的共同逻辑）
+    使用pdf2image将PDF转为图片，然后使用OpenAI Vision API提取A-Q字段
     
     Args:
         pdf_path (str): PDFfile path
@@ -419,18 +406,33 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: 包含所有A-Qfield的字典
     """
-    result = {}
+    # 使用通用的PDF提取函数（合并了RCC和TMO的共同逻辑）
+    from utils.file_utils import extract_case_data_from_pdf_with_llm
     
-    # 优先使用快速文本extract，避免AI增强process
+    result = extract_case_data_from_pdf_with_llm(
+        pdf_path=pdf_path,
+        file_type="TMO",
+        parse_date_func=parse_date,
+        format_date_func=format_date,
+        calculate_due_date_func=calculate_due_date,
+        format_date_only_func=lambda dt: dt.strftime("%Y-%m-%d") if dt else "",
+        get_location_from_slope_no_func=get_location_from_slope_no
+    )
+    
+    # 如果通用函数返回结果，直接返回
+    if result:
+        return result
+    
+    # 备用方法：使用传统OCR提取
+    print("📄 使用传统OCR方法提取PDF内容...")
     content = extract_text_from_pdf_fast(pdf_path)
     
     if not content:
         print("⚠️ 无法extractPDFtext content")
-        return {key: "" for key in ['A_date_received', 'B_source', 'C_case_number', 'D_type', 
-                                   'E_caller_name', 'F_contact_no', 'G_slope_no', 'H_location',
-                                   'I_nature_of_request', 'J_subject_matter', 'K_10day_rule_due_date',
-                                   'L_icc_interim_due', 'M_icc_final_due', 'N_works_completion_due',
-                                   'O1_fax_to_contractor', 'O2_email_send_time', 'P_fax_pages', 'Q_case_details']}
+        return _get_empty_result()
+    
+    # 初始化结果字典
+    result = {}
     
     # A: 案件接收日期 (Date of Referral)
     result['A_date_received'] = extract_referral_date(content)
@@ -543,3 +545,32 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
     result['Q_case_details'] = extract_follow_up_actions(content)
     
     return result
+
+
+def _get_empty_result() -> Dict[str, Any]:
+    """
+    返回空的A-Q字段结果字典
+    
+    Returns:
+        Dict[str, Any]: 包含所有A-Q字段的空字典
+    """
+    return {
+        'A_date_received': "",
+        'B_source': "",
+        'C_case_number': "",
+        'D_type': "General",
+        'E_caller_name': "",
+        'F_contact_no': "",
+        'G_slope_no': "",
+        'H_location': "",
+        'I_nature_of_request': "",
+        'J_subject_matter': "Tree Trimming/ Pruning",
+        'K_10day_rule_due_date': "",
+        'L_icc_interim_due': "",
+        'M_icc_final_due': "",
+        'N_works_completion_due': "",
+        'O1_fax_to_contractor': "",
+        'O2_email_send_time': "",
+        'P_fax_pages': "",
+        'Q_case_details': ""
+    }

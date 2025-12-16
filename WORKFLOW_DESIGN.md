@@ -121,8 +121,7 @@ Process Flow:
 - **Training Data**: Historical cases from Excel files
 
 #### 3.3 Request Summarization
-- **Primary**: OpenAI API (gpt-4o-mini) with proxy support
-- **Alternative**: Volcengine Doubao API
+- **Provider**: OpenAI API (gpt-4o-mini) with proxy support
 - **Fallback**: Pattern-based extraction (17 regex patterns)
 - **Input**: Email content or PDF text
 - **Output**: Concise one-sentence summary (max 200 characters)
@@ -298,14 +297,13 @@ React Application
 ### Environment Variables
 ```python
 # Required
-OPENAI_API_KEY = "sk-..."          # OpenAI API key (primary)
-ARK_API_KEY = "..."                # Volcengine API key (alternative)
+OPENAI_API_KEY = "sk-..."          # OpenAI API key
 
 # Optional
 API_HOST = "localhost"
 API_PORT = 8001
 FRONTEND_PORT = 3000
-LLM_PROVIDER = "openai"            # openai or volcengine
+LLM_PROVIDER = "openai"            # openai
 OPENAI_PROXY_URL = "socks5://localhost:7890"  # Proxy URL
 OPENAI_USE_PROXY = "true"          # Enable proxy
 MODEL_CACHE_TIMEOUT = 1800         # 30 minutes

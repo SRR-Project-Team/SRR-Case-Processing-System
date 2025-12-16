@@ -31,6 +31,7 @@ ENV/
 .venv
 
 # IDEs
+.cursor/
 .vscode/
 .idea/
 *.swp
@@ -115,3 +116,5 @@ github-actions-key.json
 *.pid
 
 srr-pipeline-9e8f7f130f95.json
+
+docs/DEPLOYMENT_CHECKLIST.md

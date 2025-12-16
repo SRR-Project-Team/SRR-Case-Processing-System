@@ -131,6 +131,20 @@ app = FastAPI(
     description="Intelligent SRR case processing system, supports TXT, TMO PDF, and RCC PDF file formats"
 )
 
+# Enable remote debugging if DEBUG_PORT is set (for Cloud Run debugging)
+DEBUG_PORT = os.getenv("DEBUG_PORT")
+if DEBUG_PORT:
+    try:
+        import debugpy
+        debugpy.listen(("0.0.0.0", int(DEBUG_PORT)))
+        print(f"🐛 Remote debugger listening on port {DEBUG_PORT}", flush=True)
+        # Optional: Wait for debugger to attach before continuing
+        # debugpy.wait_for_client()  # Uncomment if you want to wait for debugger
+    except ImportError:
+        print(f"⚠️  debugpy not installed. Install with: pip install debugpy", flush=True)
+    except Exception as e:
+        print(f"⚠️  Failed to start debugger: {e}", flush=True)
+
 # Configure CORS middleware
 # Allow frontend application (React) to access API via CORS
 # Read allowed origins from environment variables, support both development and production environments
@@ -348,13 +362,24 @@ async def generate_file_summary(file_content: str, filename: str, file_path: str
         # Prefer using file path for summarization (supports complex files like PDF)
         summary = None
         if file_path:
-            summary = llm.summarize_file(file_path, max_length=150)
-            
-            # If file-based extraction failed (e.g. unsupported/corrupted PDF),
-            # gracefully fall back to using the already-read text content.
-            if not summary and file_content:
-                print("ℹ️ File-based AI summary failed, falling back to text-content summarization", flush=True)
-                summary = llm.summarize_text(file_content, max_length=150)
+            # Check if file still exists before attempting to read it
+            # File might have been cleaned up or moved
+            import os
+            if os.path.exists(file_path) and os.path.isfile(file_path):
+                summary = llm.summarize_file(file_path, max_length=150)
+                
+                # If file-based extraction failed (e.g. unsupported/corrupted PDF),
+                # gracefully fall back to using the already-read text content.
+                if not summary and file_content:
+                    print("ℹ️ File-based AI summary failed, falling back to text-content summarization", flush=True)
+                    summary = llm.summarize_text(file_content, max_length=150)
+            else:
+                # File doesn't exist (may have been cleaned up), use text content instead
+                print(f"⚠️ File no longer exists at {file_path}, using text content for summarization", flush=True)
+                if file_content:
+                    summary = llm.summarize_text(file_content, max_length=150)
+                else:
+                    print("⚠️ No file content available for summarization", flush=True)
         else:
             # Use text content for summarization
             summary = llm.summarize_text(file_content, max_length=150)

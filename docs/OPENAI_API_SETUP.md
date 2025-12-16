@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide explains how to configure and use OpenAI API for the SRR Case Processing System. The system now supports both OpenAI API and Volcengine (Doubao) API, with OpenAI as the default provider.
+This guide explains how to configure and use OpenAI API for the SRR Case Processing System.
 
 ## Prerequisites
 
@@ -58,25 +58,16 @@ echo $OPENAI_API_KEY  # macOS/Linux
 echo %OPENAI_API_KEY%  # Windows CMD
 ```
 
-## API Provider Selection
+## API Provider Configuration
 
-The system supports multiple LLM providers. You can switch between them using the `LLM_PROVIDER` environment variable.
+The system uses OpenAI API. Configure it using the `LLM_PROVIDER` environment variable.
 
-### Using OpenAI API (Default)
+### Using OpenAI API
 
 ```bash
 export LLM_PROVIDER="openai"
 export OPENAI_API_KEY="your-openai-api-key"
 ```
-
-### Using Volcengine API (Currently Disabled)
-
-```bash
-export LLM_PROVIDER="volcengine"
-export ARK_API_KEY="your-volcengine-api-key"
-```
-
-**Note**: Volcengine API is currently disabled but kept in the code for future use.
 
 ## Configuration Files
 
@@ -84,11 +75,8 @@ export ARK_API_KEY="your-volcengine-api-key"
 
 ```python
 # LLM API Configuration
-# OpenAI API (currently in use)
+# OpenAI API
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-# Volcengine API (kept for future use, currently disabled)
-ARK_API_KEY = os.getenv("ARK_API_KEY")
 
 # Default to OpenAI API
 LLM_API_KEY = OPENAI_API_KEY
@@ -247,14 +235,6 @@ If OpenAI API is unavailable or fails:
 3. Continues processing without AI summary
 4. Uses fallback summarization methods
 
-## Migration from Volcengine API
-
-If you're migrating from Volcengine API:
-
-1. Set `OPENAI_API_KEY` environment variable
-2. Keep `LLM_PROVIDER="openai"` (default)
-3. Restart the application
-4. Volcengine code remains in the system for future use
 
 ## Support
 

@@ -184,10 +184,15 @@ def extract_text_with_ocr_fast(pdf_path: str) -> str:
         from PIL import Image
         import io
         
+        # Compatibility fix for Pillow 10.0+: Add ANTIALIAS alias if missing
+        # EasyOCR internally uses Image.ANTIALIAS which was removed in Pillow 10.0+
+        if not hasattr(Image, 'ANTIALIAS'):
+            Image.ANTIALIAS = Image.LANCZOS
+        
         print("使用快速EasyOCRextract文本...")
         
         # initializeEasyOCR (只使用英文，最快settings)
-        reader = easyocr.Reader(['en'], gpu=False, verbose=False, download_enabled=False)
+        reader = easyocr.Reader(['en'], gpu=False, verbose=False, download_enabled=True)
         
         doc = fitz.open(pdf_path)
         
@@ -368,3 +373,186 @@ def extract_content_with_multiple_methods(pdf_path: str) -> str:
             print(f"快速OCRextractfailed: {e}")
     
     return content
+
+
+def extract_case_data_from_pdf_with_llm(pdf_path: str, file_type: str, 
+                                         parse_date_func, format_date_func, 
+                                         calculate_due_date_func, format_date_only_func,
+                                         get_location_from_slope_no_func) -> dict:
+    """
+    通用的PDF提取函数，使用OpenAI Vision API提取A-Q字段
+    
+    这个函数合并了RCC和TMO的共同处理逻辑，只保留必要的差异
+    
+    Args:
+        pdf_path: PDF文件路径
+        file_type: 文件类型 ("RCC" 或 "TMO")
+        parse_date_func: 日期解析函数
+        format_date_func: 日期格式化函数
+        calculate_due_date_func: 计算截止日期函数
+        format_date_only_func: 仅日期格式化函数
+        get_location_from_slope_no_func: 从斜坡编号获取位置函数
+        
+    Returns:
+        dict: 包含所有A-Q字段的字典
+    """
+    result = {}
+    
+    # 使用pdf2image将PDF转为图片，然后使用OpenAI Vision API提取字段
+    try:
+        from pdf2image import convert_from_path
+        import tempfile
+        import os
+        from services.llm_service import get_llm_service
+        
+        print("📄 使用pdf2image将PDF转为图片...")
+        # 将PDF转换为图片（处理所有页面）
+        images = convert_from_path(pdf_path, dpi=200)
+        
+        if not images:
+            print("⚠️ 无法将PDF转换为图片")
+            return _get_empty_pdf_result()
+        
+        print(f"📄 PDF共有 {len(images)} 页，开始处理所有页面...")
+        
+        llm_service = get_llm_service()
+        temp_image_paths = []
+        
+        try:
+            # 处理第一页：提取主要字段（A-Q）
+            print(f"🤖 处理第1页：使用OpenAI Vision API提取A-Q字段...")
+            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+                temp_image_path = tmp_file.name
+                temp_image_paths.append(temp_image_path)
+                images[0].save(temp_image_path, 'PNG')
+            
+            extracted_data = llm_service.extract_fields_from_image(temp_image_path, file_type)
+            
+            if extracted_data:
+                result = extracted_data
+                print(f"✅ 成功从第1页提取 {len(result)} 个字段")
+                
+                # 如果有多个页面，处理其他页面以补充信息（特别是Q_case_details）
+                if len(images) > 1:
+                    print(f"📄 处理剩余 {len(images)-1} 页以补充信息...")
+                    additional_details = []
+                    
+                    # 定义需要补充的字段（TMO多一个J_subject_matter）
+                    supplement_fields = ['I_nature_of_request', 'Q_case_details']
+                    if file_type == "TMO":
+                        supplement_fields.append('J_subject_matter')
+                    
+                    for page_num in range(2, len(images) + 1):
+                        try:
+                            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+                                page_image_path = tmp_file.name
+                                temp_image_paths.append(page_image_path)
+                                images[page_num - 1].save(page_image_path, 'PNG')
+                            
+                            # 从其他页面提取补充信息
+                            print(f"🤖 处理第{page_num}页：提取补充信息...")
+                            page_data = llm_service.extract_fields_from_image(page_image_path, file_type)
+                            
+                            if page_data:
+                                # 合并补充信息到Q_case_details
+                                if page_data.get('Q_case_details'):
+                                    additional_details.append(f"第{page_num}页: {page_data['Q_case_details']}")
+                                # 如果某些字段在第一页为空，尝试从其他页面补充
+                                for key in supplement_fields:
+                                    if not result.get(key) and page_data.get(key):
+                                        result[key] = page_data[key]
+                                        print(f"✅ 从第{page_num}页补充字段 {key}")
+                        except Exception as e:
+                            print(f"⚠️ 处理第{page_num}页时出错: {e}")
+                            continue
+                    
+                    # 合并所有页面的详细信息
+                    if additional_details:
+                        original_q = result.get('Q_case_details', '')
+                        combined_q = original_q
+                        if original_q:
+                            combined_q += "\n\n"
+                        combined_q += "\n".join(additional_details)
+                        result['Q_case_details'] = combined_q
+                        print(f"✅ 已合并 {len(additional_details)} 页的补充信息")
+                
+                # 计算日期相关字段（如果A_date_received存在）
+                if result.get('A_date_received'):
+                    A_date = parse_date_func(result['A_date_received'])
+                    if A_date:
+                        # 重新格式化日期
+                        result['A_date_received'] = format_date_func(A_date)
+                        # 计算截止日期
+                        result['K_10day_rule_due_date'] = calculate_due_date_func(A_date, 10)
+                        result['L_icc_interim_due'] = calculate_due_date_func(A_date, 10)
+                        result['M_icc_final_due'] = calculate_due_date_func(A_date, 21)
+                        
+                        # N: 工程完成截止日期 (取决于D)
+                        days_map = {"Emergency": 1, "Urgent": 3, "General": 12}
+                        result['N_works_completion_due'] = calculate_due_date_func(A_date, days_map.get(result.get('D_type', 'General'), 12))
+                        
+                        # O1: 发给承包商的传真日期
+                        result['O1_fax_to_contractor'] = format_date_only_func(A_date)
+                
+                # P: 传真页数
+                try:
+                    import pdfplumber
+                    with pdfplumber.open(pdf_path) as pdf:
+                        result['P_fax_pages'] = str(len(pdf.pages))
+                except:
+                    result['P_fax_pages'] = "1"
+                
+                # H: 位置 (如果G_slope_no存在，从Excel数据获取)
+                if result.get('G_slope_no') and not result.get('H_location'):
+                    result['H_location'] = get_location_from_slope_no_func(result['G_slope_no'])
+                
+                return result
+            else:
+                print("⚠️ OpenAI Vision API未能从第1页提取字段，使用备用方法...")
+        finally:
+            # 清理所有临时文件
+            for temp_path in temp_image_paths:
+                try:
+                    if os.path.exists(temp_path):
+                        os.unlink(temp_path)
+                except:
+                    pass
+                
+    except ImportError:
+        print("⚠️ pdf2image未安装，使用传统OCR方法...")
+    except Exception as e:
+        print(f"⚠️ pdf2image + Vision API方法失败: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # 如果Vision API失败，返回空结果（调用者会使用备用方法）
+    return None
+
+
+def _get_empty_pdf_result() -> dict:
+    """
+    返回空的A-Q字段结果字典（用于PDF提取）
+    
+    Returns:
+        dict: 包含所有A-Q字段的空字典
+    """
+    return {
+        'A_date_received': "",
+        'B_source': "",
+        'C_case_number': "",
+        'D_type': "General",
+        'E_caller_name': "",
+        'F_contact_no': "",
+        'G_slope_no': "",
+        'H_location': "",
+        'I_nature_of_request': "",
+        'J_subject_matter': "Others",
+        'K_10day_rule_due_date': "",
+        'L_icc_interim_due': "",
+        'M_icc_final_due': "",
+        'N_works_completion_due': "",
+        'O1_fax_to_contractor': "",
+        'O2_email_send_time': "",
+        'P_fax_pages': "",
+        'Q_case_details': ""
+    }

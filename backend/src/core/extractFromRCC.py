@@ -46,14 +46,18 @@ def parse_date(date_str: str) -> Optional[datetime]:
     if not date_str:
         return None
     
-    # 尝试多种日期格式
+    # 尝试多种日期格式（包括Vision API可能返回的格式）
     date_formats = [
+        "%d-%b-%Y",      # "15-Jan-2024" (Vision API常用格式)
+        "%d-%B-%Y",      # "15-January-2024"
+        "%d %b %Y",      # "15 Jan 2024"
+        "%d %B %Y",      # "21 January 2025"
         "%Y-%m-%d",      # "2025-01-21"
         "%Y/%m/%d",      # "2025/03/18"
         "%d/%m/%Y",      # "21/01/2025"
         "%d-%m-%Y",      # "21-01-2025"
-        "%d %B %Y",      # "21 January 2025"
         "%Y年%m月%d日",   # "2025年01月21日"
+        "%m/%d/%Y",      # "01/21/2025" (US format)
     ]
     
     for fmt in date_formats:
@@ -116,7 +120,7 @@ def extract_text_with_ocr_traditional(pdf_path: str) -> str:
         print("使用传统EasyOCRextract文本...")
         
         # initializeEasyOCR (只使用英文，避免语言冲突，提高speed)
-        reader = easyocr.Reader(['en'], gpu=False, verbose=False, download_enabled=False)
+        reader = easyocr.Reader(['en'], gpu=False, verbose=False, download_enabled=True)
         
         doc = fitz.open(pdf_path)
         
@@ -210,7 +214,7 @@ def extract_text_with_ocr_traditional(pdf_path: str) -> str:
         images = convert_from_path(pdf_path, dpi=150)
         
         # initializeEasyOCR (optimizespeed)
-        reader = easyocr.Reader(['en'], gpu=False, verbose=False, download_enabled=False)
+        reader = easyocr.Reader(['en'], gpu=False, verbose=False, download_enabled=True)
         
         for i, image in enumerate(images):
             # 转换为numpyarray (EasyOCR需要numpyarray)
@@ -332,16 +336,17 @@ def extract_date_from_content(content: str) -> str:
         r'(\d{1,2}\s+\w+\s+\d{4})',  # DD Month YYYY
         r'(\w+\s+\d{1,2},?\s+\d{4})'  # Month DD, YYYY
     ]
-    
+    date_str = ""
     for pattern in date_patterns:
+        print(f"content: {content}, pattern: {pattern}")
         match = re.search(pattern, content, re.IGNORECASE)
         if match:
             date_str = match.group(1).strip()
             # cleanup日期string，移除时间部分
             date_str = re.sub(r'\s+\d{1,2}:\d{2}:\d{2}', '', date_str)
             return date_str
-    
-    return ""
+
+    return date_str
 
 
 def extract_source_info(content: str) -> str:
@@ -671,25 +676,8 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
     """
     从RCC PDF文件中extract所有案件data，return字典格式
     
-    这是主要的RCCdataextract函数，按照A-Qfield规则extract：
-    - A: 案件接收日期
-    - B: 来源 (RCC)
-    - C: 1823案件号 (RCC案件编号)
-    - D: 案件class型 (根据内容判断)
-    - E: 来电人姓名 (联系人)
-    - F: 联系电话
-    - G: 斜坡编号
-    - H: 位置 (从Exceldata获取)
-    - I: 请求性质摘要
-    - J: 事项主题
-    - K: 10天规则截止日期 (A+10天)
-    - L: ICC临时回复截止日期 (不适用)
-    - M: ICC最终回复截止日期 (不适用)
-    - N: 工程完成截止日期 (取决于D)
-    - O1: 发给承包商的传真日期 (通常同A)
-    - O2: 邮件发送时间 (不适用)
-    - P: 传真页数 (PDF页数)
-    - Q: 案件详情
+    这是主要的RCCdataextract函数，使用通用的PDF提取函数（合并了RCC和TMO的共同逻辑）
+    使用pdf2image将PDF转为图片，然后使用OpenAI Vision API提取A-Q字段
     
     Args:
         pdf_path (str): PDFfile path
@@ -697,62 +685,39 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: 包含所有A-Qfield的字典
     """
-    result = {}
+    # 使用通用的PDF提取函数（合并了RCC和TMO的共同逻辑）
+    from utils.file_utils import extract_case_data_from_pdf_with_llm
     
-    # extractPDF内容
+    result = extract_case_data_from_pdf_with_llm(
+        pdf_path=pdf_path,
+        file_type="RCC",
+        parse_date_func=parse_date,
+        format_date_func=format_date,
+        calculate_due_date_func=calculate_due_date,
+        format_date_only_func=lambda dt: dt.strftime("%Y-%m-%d") if dt else "",
+        get_location_from_slope_no_func=get_location_from_slope_no
+    )
+    
+    # 如果通用函数返回结果，直接返回
+    if result:
+        return result
+    
+    # 备用方法：使用传统OCR提取
+    print("📄 使用传统OCR方法提取PDF内容...")
     content = extract_content_with_multiple_methods(pdf_path)
     
     if not content:
         print("warning: 无法从PDF文件中extracttext content，可能是扫描件或加密文件")
-        print("提示: 请使用OCR工具将PDF转换为文本，或提供可编辑的PDF文件")
-        
-        # 即使无法extract文本，也提供一些基本information
-        result = {}
-        
-        # 从file名extract基本information
-        # B: 来源（智能classify）
-        result['B_source'] = classify_source_smart(
-            file_path=pdf_path, 
-            content="", 
-            email_content=None, 
-            file_type='pdf'
-        )
-        
-        filename = os.path.basename(pdf_path)
-        # 尝试从file名extract案件编号
-        result['C_case_number'] = extract_rcc_case_number("", pdf_path)
-        
-        # settings默认value
-        result['A_date_received'] = ""
-        result['D_type'] = "General"
-        result['E_caller_name'] = ""
-        result['F_contact_no'] = ""
-        result['G_slope_no'] = ""
-        result['H_location'] = ""
-        result['I_nature_of_request'] = "RCC案件process - 无法extract具体请求内容"
-        result['J_subject_matter'] = "Others"
-        result['K_10day_rule_due_date'] = ""
-        result['L_icc_interim_due'] = ""
-        result['M_icc_final_due'] = ""
-        result['N_works_completion_due'] = ""
-        result['O1_fax_to_contractor'] = ""
-        result['O2_email_send_time'] = ""
-        
-        # getPDF页数
-        try:
-            with pdfplumber.open(pdf_path) as pdf:
-                result['P_fax_pages'] = str(len(pdf.pages))
-        except:
-            result['P_fax_pages'] = ""
-        
-        result['Q_case_details'] = f"RCC案件process - 文件: {filename} (无法extracttext content)"
-        
-        return result
+        return _get_empty_result()
+    
+    # 初始化结果字典
+    result = {}
     
     # A: 案件接收日期
     date_str = extract_date_from_content(content)
-    result['A_date_received'] = format_date(parse_date(date_str))
     A_date = parse_date(date_str)
+    result['A_date_received'] = format_date(A_date) if A_date else ""
+
     
     # B: 来源（智能classify）
     result['B_source'] = classify_source_smart(
@@ -860,3 +825,32 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
     result['Q_case_details'] = f"RCC案件process - {result['I_nature_of_request']}"
     
     return result
+
+
+def _get_empty_result() -> Dict[str, Any]:
+    """
+    返回空的A-Q字段结果字典
+    
+    Returns:
+        Dict[str, Any]: 包含所有A-Q字段的空字典
+    """
+    return {
+        'A_date_received': "",
+        'B_source': "",
+        'C_case_number': "",
+        'D_type': "General",
+        'E_caller_name': "",
+        'F_contact_no': "",
+        'G_slope_no': "",
+        'H_location': "",
+        'I_nature_of_request': "",
+        'J_subject_matter': "Others",
+        'K_10day_rule_due_date': "",
+        'L_icc_interim_due': "",
+        'M_icc_final_due': "",
+        'N_works_completion_due': "",
+        'O1_fax_to_contractor': "",
+        'O2_email_send_time': "",
+        'P_fax_pages': "",
+        'Q_case_details': ""
+    }

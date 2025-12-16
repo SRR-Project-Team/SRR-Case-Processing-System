@@ -68,7 +68,7 @@ project3/
 │   │   ├── ai/                       # AI/ML classifiers
 │   │   ├── services/                 # Business logic services
 │   │   │   ├── historical_case_matcher.py  # Similarity matching
-│   │   │   └── llm_service.py              # OpenAI/Volcengine API
+│   │   │   └── llm_service.py              # OpenAI API
 │   │   ├── database/                 # Database management
 │   │   └── utils/                    # Utility functions
 │   ├── data/                          # Historical data (5,298 cases + 32,405 trees)
@@ -96,7 +96,7 @@ Multi-format    TXT/TMO/RCC    Text/OCR/PDF      Case Type         A-Q Columns
 - **Node.js 16+** for frontend
 - **4GB+ RAM** for AI models and historical data caching
 - **10GB storage** for dependencies and data files
-- **OpenAI API Key** (or Volcengine API key as alternative)
+- **OpenAI API Key**
 - **Proxy** (optional, for regions where OpenAI is blocked)
 
 ## 📚 Documentation

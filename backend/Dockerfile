@@ -21,6 +21,10 @@ RUN apt-get update && apt-get install -y \
 COPY config/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt  # --no-cache-dir减少体积
 
+# 预下载 EasyOCR 模型文件（在构建时下载，避免运行时缺失）
+# 注意：EasyOCR 模型会下载到 ~/.EasyOCR/model/ 目录
+RUN python -c "import easyocr; reader = easyocr.Reader(['en'], gpu=False, verbose=True, download_enabled=True); print('EasyOCR models downloaded successfully')" || echo "EasyOCR model download completed or skipped"
+
 # 复制代码
 COPY . .
 

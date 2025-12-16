@@ -41,8 +41,14 @@ def parse_date(date_str: str) -> Optional[datetime]:
     """
     解析日期字符串为datetimeobject（用于计算），failedreturnNone
     
+    支持多种日期格式，包括：
+    - "YYYY-MM-DD HH:MM:SS"
+    - "dd-MMM-yyyy" (e.g., "15-Jan-2024")
+    - "YYYY-MM-DD"
+    - 其他常见格式
+    
     Args:
-        date_str (str): 日期字符串，格式为 "YYYY-MM-DD HH:MM:SS"
+        date_str (str): 日期字符串
         
     Returns:
         Optional[datetime]: 解析successreturndatetimeobject，failedreturnNone
@@ -50,15 +56,34 @@ def parse_date(date_str: str) -> Optional[datetime]:
     Example:
         >>> parse_date("2024-01-15 10:30:00")
         datetime(2024, 1, 15, 10, 30, 0)
+        >>> parse_date("15-Jan-2024")
+        datetime(2024, 1, 15, 0, 0, 0)
         >>> parse_date("")
         None
     """
     if not date_str:
         return None
-    try:
-        return datetime.strptime(date_str.strip(), "%Y-%m-%d %H:%M:%S")
-    except ValueError:
-        return None
+    
+    # 尝试多种日期格式
+    date_formats = [
+        "%Y-%m-%d %H:%M:%S",  # "2024-01-15 10:30:00"
+        "%d-%b-%Y",           # "15-Jan-2024"
+        "%d-%B-%Y",           # "15-January-2024"
+        "%d %b %Y",           # "15 Jan 2024"
+        "%d %B %Y",           # "21 January 2025"
+        "%Y-%m-%d",           # "2025-01-21"
+        "%Y/%m/%d",           # "2025/03/18"
+        "%d/%m/%Y",           # "21/01/2025"
+        "%d-%m-%Y",           # "21-01-2025"
+    ]
+    
+    for fmt in date_formats:
+        try:
+            return datetime.strptime(date_str.strip(), fmt)
+        except ValueError:
+            continue
+    
+    return None
 
 
 def format_date(dt: Optional[datetime]) -> str:
@@ -364,25 +389,7 @@ def extract_case_data_from_txt(txt_path: str) -> dict:
     """
     从TXT文件中extract所有案件data，return字典格式
     
-    这是主要的dataextract函数，整合了所有extract逻辑，按照A-Qfield规则extract：
-    - A: 案件接收日期
-    - B: 来源
-    - C: 1823案件号（仅RCC/ICC）
-    - D: 案件class型
-    - E: 来电人姓名
-    - F: 联系电话
-    - G: 斜坡编号
-    - H: 位置（从Exceldata获取）
-    - I: 请求性质摘要（使用NLP增强技术）
-    - J: 事项主题
-    - K: 10天规则截止日期
-    - L: ICC临时回复截止日期
-    - M: ICC最终回复截止日期
-    - N: 工程完成截止日期
-    - O1: 发给承包商的传真日期
-    - O2: 邮件发送时间
-    - P: 传真页数
-    - Q: 案件详情
+    这是主要的dataextract函数，使用OpenAI大模型提取A-Q字段
     
     Args:
         txt_path (str): TXTfile path
@@ -390,16 +397,14 @@ def extract_case_data_from_txt(txt_path: str) -> dict:
     Returns:
         dict: 包含所有A-Qfield的字典
     """
+    result = {}
+    
     # 使用智能encoding检测read原始file内容
     try:
         content = read_file_with_encoding(txt_path)
     except Exception as e:
         print(f"⚠️ 无法读取TXT文件: {e}")
-        return {key: "" for key in ['A_date_received', 'B_source', 'C_case_number', 'D_type', 
-                                   'E_caller_name', 'F_contact_no', 'G_slope_no', 'H_location',
-                                   'I_nature_of_request', 'J_subject_matter', 'K_10day_rule_due_date',
-                                   'L_icc_interim_due', 'M_icc_final_due', 'N_works_completion_due',
-                                   'O1_fax_to_contractor', 'O2_email_send_time', 'P_fax_pages', 'Q_case_details']}
+        return _get_empty_result()
     
     # check是否有对应的邮件file
     email_content = None
@@ -418,12 +423,56 @@ def extract_case_data_from_txt(txt_path: str) -> dict:
                 print(f"⚠️ 邮件文件读取failed: {e}")
                 email_content = None
         else:
-            print(f"⚠️ 未找到邮件文件: {email_path}")
+            print(f"ℹ️ 未找到邮件文件: {email_path}")
             
     except Exception as e:
         print(f"⚠️ 邮件文件processfailed: {e}")
     
-    # 调用原有的extract逻辑，并传递邮件内容用于NLPprocess
+    # 使用OpenAI大模型提取A-Q字段
+    try:
+        from services.llm_service import get_llm_service
+        
+        print("🤖 使用OpenAI大模型提取TXT文档A-Q字段...")
+        llm_service = get_llm_service()
+        extracted_data = llm_service.extract_fields_from_text(content, email_content)
+        
+        if extracted_data:
+            result = extracted_data
+            print(f"✅ 成功从TXT文档提取 {len(result)} 个字段")
+            
+            # 计算日期相关字段（如果A_date_received存在）
+            if result.get('A_date_received'):
+                A_date = parse_date(result['A_date_received'])
+                
+                if A_date:
+                    # 重新格式化日期
+                    result['A_date_received'] = format_date(A_date)
+                    # 计算截止日期
+                    result['K_10day_rule_due_date'] = calculate_due_date(A_date, 10)
+                    result['L_icc_interim_due'] = calculate_due_date(A_date, 10)
+                    result['M_icc_final_due'] = calculate_due_date(A_date, 21)
+                    
+                    # N: 工程完成截止日期 (取决于D)
+                    days_map = {"Emergency": 1, "Urgent": 3, "General": 12}
+                    result['N_works_completion_due'] = calculate_due_date(A_date, days_map.get(result.get('D_type', 'General'), 12))
+                    
+                    # O1: 发给承包商的传真日期
+                    result['O1_fax_to_contractor'] = format_date_only(A_date)
+            
+            # H: 位置 (如果G_slope_no存在，从Excel数据获取)
+            if result.get('G_slope_no') and not result.get('H_location'):
+                result['H_location'] = get_location_from_slope_no(result['G_slope_no'])
+            
+            return result
+        else:
+            print("⚠️ OpenAI大模型未能提取字段，使用备用方法...")
+    except Exception as e:
+        print(f"⚠️ OpenAI大模型提取失败: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # 备用方法：使用传统提取逻辑
+    print("📄 使用传统方法提取TXT内容...")
     return extract_case_data_with_email(content, email_content, content, txt_path)
 
 
@@ -531,19 +580,6 @@ def extract_case_data(content: str, original_content: str = None, email_content:
     # C: 案件编号 (search所有文本中"1823 case:"后面的内容)
     result['C_case_number'] = extract_1823_case_no(content)
     
-    # D: 案件class型（使用AIclassify）
-    # 准备AIclassify所需的data
-    case_data_for_ai = {
-        'I_nature_of_request': result.get('I_nature_of_request', ''),
-        'J_subject_matter': result.get('J_subject_matter', ''),
-        'Q_case_details': result.get('Q_case_details', ''),
-        'B_source': result.get('B_source', ''),
-        'G_slope_no': result.get('G_slope_no', ''),
-        'F_contact_no': result.get('F_contact_no', ''),
-        'content': content
-    }
-    result['D_type'] = classify_case_type_ai_enhanced(case_data_for_ai)
-    
     # E: 来电人姓名；F: 联系电话（取决于B）
     result['E_caller_name'], result['F_contact_no'] = get_caller_info_by_source(content, result['B_source'])
     
@@ -588,6 +624,19 @@ def extract_case_data(content: str, original_content: str = None, email_content:
         print(f"⚠️ TXT主题classifyfailed，使用原始extract: {e}")
         result['J_subject_matter'] = extracted_subject or "Others"
     
+    # D: 案件class型（使用AIclassify）
+    # 准备AIclassify所需的data（需要在I、J、F、G字段处理完成后）
+    case_data_for_ai = {
+        'I_nature_of_request': result.get('I_nature_of_request', ''),
+        'J_subject_matter': result.get('J_subject_matter', ''),
+        'Q_case_details': result.get('I_nature_of_request', ''),  # Q字段还未处理，先用I的内容
+        'B_source': result.get('B_source', ''),
+        'G_slope_no': result.get('G_slope_no', ''),
+        'F_contact_no': result.get('F_contact_no', ''),
+        'content': content
+    }
+    result['D_type'] = classify_case_type_ai_enhanced(case_data_for_ai)
+    
     # K: 10天规则截止日期（A+10天）
     result['K_10day_rule_due_date'] = calculate_due_date(A_date, 10)
     
@@ -626,3 +675,32 @@ def extract_case_data(content: str, original_content: str = None, email_content:
     result['Q_case_details'] = detail_text
     
     return result
+
+
+def _get_empty_result() -> dict:
+    """
+    返回空的A-Q字段结果字典
+    
+    Returns:
+        dict: 包含所有A-Q字段的空字典
+    """
+    return {
+        'A_date_received': "",
+        'B_source': "",
+        'C_case_number': "",
+        'D_type': "General",
+        'E_caller_name': "",
+        'F_contact_no': "",
+        'G_slope_no': "",
+        'H_location': "",
+        'I_nature_of_request': "",
+        'J_subject_matter': "Others",
+        'K_10day_rule_due_date': "",
+        'L_icc_interim_due': "",
+        'M_icc_final_due': "",
+        'N_works_completion_due': "",
+        'O1_fax_to_contractor': "",
+        'O2_email_send_time': "",
+        'P_fax_pages': "",
+        'Q_case_details': ""
+    }

@@ -150,7 +150,7 @@ class HistoricalCaseMatcher:
                 self.db_case_count = cursor.fetchone()[0]
                 conn.close()
                 print(f"📂 Current Database: {self.db_case_count} cases")
-                
+            
         except Exception as e:
             print(f"⚠️ Error loading historical data: {e}")
     

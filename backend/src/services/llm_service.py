@@ -2,7 +2,7 @@
 LLM API Service Module
 
 Provides interaction functionality with Large Language Model APIs, including text summarization, Q&A, etc.
-Supports both OpenAI API (with proxy) and Volcengine (Doubao) API.
+Supports OpenAI API (with proxy).
 """
 
 import os
@@ -11,14 +11,13 @@ import time
 from typing import Optional, Dict, Any
 from openai import OpenAI
 import httpx
-# from volcenginesdkarkruntime import Ark  # Volcengine API (kept for future use)
 
 class LLMService:
     """
     LLM API Service Class
     
     Provides interaction functionality with Large Language Model APIs, including text summarization, Q&A, etc.
-    Supports both OpenAI API (with proxy) and Volcengine (Doubao) API.
+    Supports OpenAI API (with proxy).
     """
     
     def __init__(self, api_key: str, provider: str = "openai", proxy_url: str = None, use_proxy: bool = False):
@@ -27,7 +26,7 @@ class LLMService:
         
         Args:
             api_key: API key
-            provider: API provider, "openai" or "volcengine" (default: "openai")
+            provider: API provider, "openai" (default: "openai")
             proxy_url: Proxy URL (e.g., "http://127.0.0.1:7890")
             use_proxy: Whether to use proxy (default: False)
         """
@@ -121,15 +120,8 @@ class LLMService:
                     self.logger.debug(f"   - API Key: {api_key_preview}")
                     self.logger.debug(f"   - Headers: Authorization (Bearer) and Content-Type (application/json) are auto-configured")
                     self.logger.info(f"   - Timeout settings: connect=30s, read=60s")
-                elif provider == "volcengine":
-                    # Volcengine API (commented out, kept for future use)
-                    # from volcenginesdkarkruntime import Ark
-                    # self.client = Ark(api_key=self.api_key)
-                    # self.logger.info("✅ Volcengine LLM client initialized successfully")
-                    self.logger.warning("⚠️ Volcengine API is currently disabled")
-                    self.client = None
                 else:
-                    self.logger.error(f"❌ Unknown provider: {provider}")
+                    self.logger.error(f"❌ Unknown provider: {provider}. Only 'openai' is supported.")
                     self.client = None
             except Exception as e:
                 self.logger.error(f"❌ LLM client initialization failed: {e}")
@@ -257,23 +249,11 @@ class LLMService:
                             self.logger.debug(f"Full traceback:\n{traceback.format_exc()}")
                             
                             return None
-            
-            elif self.provider == "volcengine":
-                # Volcengine API (commented out, kept for future use)
-                # response = self.client.chat.completions.create(
-                #     model="doubao-seed-1-6-flash-250828",
-                #     messages=[{"content": message, "role": "user"}]
-                # )
-                # 
-                # if response and response.choices and len(response.choices) > 0:
-                #     content = response.choices[0].message.content
-                #     if content and content.strip():
-                #         self.logger.info("✅ Volcengine AI summary generated successfully")
-                #         return content.strip()
-                self.logger.warning("⚠️ Volcengine API is currently disabled")
+            else:
+                self.logger.warning(f"⚠️ Unsupported provider: {self.provider}. Only 'openai' is supported.")
                 return None
             
-            self.logger.warning("⚠️ Unknown provider or API response is empty")
+            self.logger.warning("⚠️ API response is empty or invalid")
             return None
             
         except Exception as e:
@@ -329,14 +309,51 @@ class LLMService:
             File content, returns None on failure
         """
         try:
+            # Handle file paths that may contain special characters like #
+            # Ensure the path is properly handled (no URL decoding needed for file paths)
+            original_path = file_path
+            
             # Convert to absolute path for reliable checking
+            # Note: os.path.abspath handles # correctly, but we need to ensure
+            # the path hasn't been URL-decoded incorrectly
             abs_file_path = os.path.abspath(file_path)
             
+            # Log path information for debugging
+            self.logger.debug(f"📄 Extracting content from file:")
+            self.logger.debug(f"   Original path: {original_path}")
+            self.logger.debug(f"   Absolute path: {abs_file_path}")
+            self.logger.debug(f"   File exists: {os.path.exists(abs_file_path)}")
+            
             if not os.path.exists(abs_file_path):
-                self.logger.error(f"❌ File does not exist: {abs_file_path}")
-                self.logger.error(f"   Original path: {file_path}")
-                self.logger.error(f"   Current working directory: {os.getcwd()}")
-                return None
+                # Try to find the file in common temp directories
+                # Sometimes the file might be in a different location
+                temp_dirs = ['/tmp', '/var/tmp', os.path.join(os.getcwd(), 'temp')]
+                found_alternative = False
+                
+                for temp_dir in temp_dirs:
+                    if os.path.exists(temp_dir):
+                        # Try to find file by basename in temp directory
+                        basename = os.path.basename(file_path)
+                        alt_path = os.path.join(temp_dir, basename)
+                        if os.path.exists(alt_path):
+                            self.logger.info(f"✅ Found file in alternative location: {alt_path}")
+                            abs_file_path = alt_path
+                            found_alternative = True
+                            break
+                
+                if not found_alternative:
+                    self.logger.error(f"❌ File does not exist: {abs_file_path}")
+                    self.logger.error(f"   Original path: {original_path}")
+                    self.logger.error(f"   Current working directory: {os.getcwd()}")
+                    # List files in the directory if it exists
+                    dir_path = os.path.dirname(abs_file_path)
+                    if os.path.exists(dir_path):
+                        try:
+                            files_in_dir = os.listdir(dir_path)
+                            self.logger.error(f"   Files in directory: {files_in_dir[:10]}")  # Show first 10 files
+                        except Exception as e:
+                            self.logger.error(f"   Cannot list directory: {e}")
+                    return None
             
             if not os.path.isfile(abs_file_path):
                 self.logger.error(f"❌ Path is not a file: {abs_file_path}")
@@ -439,6 +456,262 @@ class LLMService:
             self.logger.error(f"❌ PDF content extraction exception: {e}")
             return None
 
+    def extract_fields_from_image(self, image_path: str, file_type: str) -> Optional[Dict[str, Any]]:
+        """
+        Use OpenAI Vision API to extract A-Q fields from PDF image
+        
+        Args:
+            image_path: Path to the image file (PNG/JPEG)
+            file_type: Type of file ("RCC" or "TMO") - must be explicitly specified
+            
+        Returns:
+            Dictionary containing extracted A-Q fields, or None on failure
+        """
+        try:
+            # Check API key and client
+            if not self.api_key or not self.client:
+                self.logger.warning("⚠️ API key not set or client not initialized, cannot use Vision API")
+                return None
+            
+            # Read image file and encode to base64
+            import base64
+            with open(image_path, "rb") as image_file:
+                image_data = base64.b64encode(image_file.read()).decode('utf-8')
+            
+            # Determine file extension
+            import os
+            file_ext = os.path.splitext(image_path)[1].lower()
+            if file_ext == '.png':
+                image_format = "image/png"
+            elif file_ext in ['.jpg', '.jpeg']:
+                image_format = "image/jpeg"
+            else:
+                self.logger.error(f"❌ Unsupported image format: {file_ext}")
+                return None
+            
+            # Validate file type
+            if file_type not in ["RCC", "TMO"]:
+                self.logger.error(f"❌ Invalid file_type: {file_type}. Must be 'RCC' or 'TMO'")
+                return None
+            
+            # Build prompt - unified for both RCC and TMO with minor differences
+            doc_type_hint = "RCC" if file_type == "RCC" else "TMO"
+            date_field_hint = "案件接收日期" if file_type == "RCC" else "案件接收日期 (Date of Referral)"
+            source_hint = "来源 (usually RCC)" if file_type == "RCC" else "来源 (usually TMO)"
+            case_number_hint = "1823案件号 (RCC案件编号)" if file_type == "RCC" else "1823案件号 (if available)"
+            caller_hint = "来电人姓名" if file_type == "RCC" else "检查员姓名 (Inspection Officer)"
+            contact_hint = "联系电话" if file_type == "RCC" else "联系电话 (Contact)"
+            slope_hint = "斜坡编号 (e.g., 11SW-D/CR995)" if file_type == "RCC" else "斜坡编号 (from Form 2 ref. no., e.g., 11SW-B/F199)"
+            location_hint = "位置信息" if file_type == "RCC" else "位置信息 (District)"
+            nature_hint = "请求性质摘要" if file_type == "RCC" else "请求性质摘要 (Comments from TMO)"
+            subject_hint = "事项主题" if file_type == "RCC" else "事项主题 (usually Tree Trimming/Pruning)"
+            details_hint = "案件详情" if file_type == "RCC" else "案件详情 (Follow-up Actions)"
+            
+            prompt = f"""Extract the following fields from this {doc_type_hint} document image. Return a JSON object with these exact keys:
+{{
+  "A_date_received": "{date_field_hint} (dd-MMM-yyyy format, e.g., 15-Jan-2024)",
+  "B_source": "{source_hint}",
+  "C_case_number": "{case_number_hint}",
+  "D_type": "案件类型 (Emergency/Urgent/General)",
+  "E_caller_name": "{caller_hint}",
+  "F_contact_no": "{contact_hint}",
+  "G_slope_no": "{slope_hint}",
+  "H_location": "{location_hint}",
+  "I_nature_of_request": "{nature_hint}",
+  "J_subject_matter": "{subject_hint}",
+  "K_10day_rule_due_date": "10天规则截止日期 (dd-MMM-yyyy)",
+  "L_icc_interim_due": "ICC临时回复截止日期 (dd-MMM-yyyy)",
+  "M_icc_final_due": "ICC最终回复截止日期 (dd-MMM-yyyy)",
+  "N_works_completion_due": "工程完成截止日期 (dd-MMM-yyyy)",
+  "O1_fax_to_contractor": "发给承包商的传真日期 (YYYY-MM-DD)",
+  "O2_email_send_time": "邮件发送时间 (if applicable)",
+  "P_fax_pages": "传真页数",
+  "Q_case_details": "{details_hint}"
+}}
+
+Extract all visible information from the document. If a field is not found, use empty string. For dates, use the specified format."""
+            
+            # Call OpenAI Vision API
+            self.logger.info(f"🔄 Calling OpenAI Vision API for {file_type} document...")
+            
+            response = self.client.chat.completions.create(
+                model="gpt-4o",  # Use gpt-4o for vision capabilities
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an expert document extraction assistant. Extract structured information from document images and return valid JSON only."
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": prompt
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{image_format};base64,{image_data}"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens=2000,
+                temperature=0.1  # Low temperature for accurate extraction
+            )
+            
+            # Extract response content
+            if response and response.choices and len(response.choices) > 0:
+                content = response.choices[0].message.content
+                if content and content.strip():
+                    # Parse JSON response
+                    import json
+                    # Remove markdown code blocks if present
+                    content = content.strip()
+                    if content.startswith("```json"):
+                        content = content[7:]
+                    elif content.startswith("```"):
+                        content = content[3:]
+                    if content.endswith("```"):
+                        content = content[:-3]
+                    content = content.strip()
+                    
+                    try:
+                        extracted_data = json.loads(content)
+                        self.logger.info(f"✅ Successfully extracted {len(extracted_data)} fields from {file_type} document")
+                        return extracted_data
+                    except json.JSONDecodeError as e:
+                        self.logger.error(f"❌ Failed to parse JSON response: {e}")
+                        self.logger.debug(f"Response content: {content}")
+                        return None
+            
+            self.logger.warning("⚠️ Vision API response is empty or invalid")
+            return None
+            
+        except Exception as e:
+            error_type = type(e).__name__
+            error_msg = str(e)
+            self.logger.error(f"❌ Vision API extraction failed: {error_type} - {error_msg}")
+            import traceback
+            self.logger.error(f"Full traceback:\n{traceback.format_exc()}")
+            return None
+
+    def extract_fields_from_text(self, text_content: str, email_content: str = None) -> Optional[Dict[str, Any]]:
+        """
+        Use OpenAI API to extract A-Q fields from TXT content
+        
+        Args:
+            text_content: TXT file content
+            email_content: Optional email content for additional context
+            
+        Returns:
+            Dictionary containing extracted A-Q fields, or None on failure
+        """
+        try:
+            # Check API key and client
+            if not self.api_key or not self.client:
+                self.logger.warning("⚠️ API key not set or client not initialized, cannot use OpenAI API")
+                return None
+            
+            # Combine text and email content if available
+            full_content = text_content
+            if email_content:
+                full_content = f"Main Content:\n{text_content}\n\nEmail Content:\n{email_content}"
+            
+            # Limit content length to avoid token limits (keep first 8000 characters)
+            if len(full_content) > 8000:
+                full_content = full_content[:8000] + "\n\n[... content truncated ...]"
+            
+            # Build prompt for TXT extraction
+            prompt = """Extract the following fields from this TXT case file content. Return a JSON object with these exact keys:
+{
+  "A_date_received": "案件接收日期 (Case Creation Date, dd-MMM-yyyy format, e.g., 15-Jan-2024)",
+  "B_source": "来源 (Channel/Source, e.g., ICC, Telephone, E-mail, RCC, TMO, Web)",
+  "C_case_number": "1823案件号 (1823 case number, if available)",
+  "D_type": "案件类型 (Emergency/Urgent/General)",
+  "E_caller_name": "来电人姓名 (Caller Name)",
+  "F_contact_no": "联系电话 (Contact Number)",
+  "G_slope_no": "斜坡编号 (Slope Number, e.g., 11SW-D/CR995)",
+  "H_location": "位置信息 (Location/Venue)",
+  "I_nature_of_request": "请求性质摘要 (Nature of Request summary)",
+  "J_subject_matter": "事项主题 (Subject Matter)",
+  "K_10day_rule_due_date": "10天规则截止日期 (dd-MMM-yyyy)",
+  "L_icc_interim_due": "ICC临时回复截止日期 (dd-MMM-yyyy)",
+  "M_icc_final_due": "ICC最终回复截止日期 (dd-MMM-yyyy)",
+  "N_works_completion_due": "工程完成截止日期 (dd-MMM-yyyy)",
+  "O1_fax_to_contractor": "发给承包商的传真日期 (YYYY-MM-DD)",
+  "O2_email_send_time": "邮件发送时间 (Transaction Time, HH:MM:SS format if available)",
+  "P_fax_pages": "传真页数 (File upload count, e.g., '1 + 2' if 2 files uploaded)",
+  "Q_case_details": "案件详情 (Case Details, including nature of request)"
+}
+
+Extract all information from the text content. Look for patterns like:
+- Case Creation Date : YYYY-MM-DD HH:MM:SS
+- Channel : [source]
+- 1823 case: [number]
+- Subject Matter : [subject]
+- Transaction Time: [time]
+- File upload: [count] file
+- Contact information, slope numbers, locations, etc.
+
+If a field is not found, use empty string. For dates, use the specified format."""
+            
+            # Call OpenAI API
+            self.logger.info("🔄 Calling OpenAI API for TXT document extraction...")
+            
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",  # Use gpt-4o-mini for text extraction (cost-effective)
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an expert case data extraction assistant. Extract structured information from case file text content and return valid JSON only."
+                    },
+                    {
+                        "role": "user",
+                        "content": f"{prompt}\n\nText Content:\n{full_content}"
+                    }
+                ],
+                max_tokens=2000,
+                temperature=0.1  # Low temperature for accurate extraction
+            )
+            
+            # Extract response content
+            if response and response.choices and len(response.choices) > 0:
+                content = response.choices[0].message.content
+                if content and content.strip():
+                    # Parse JSON response
+                    import json
+                    # Remove markdown code blocks if present
+                    content = content.strip()
+                    if content.startswith("```json"):
+                        content = content[7:]
+                    elif content.startswith("```"):
+                        content = content[3:]
+                    if content.endswith("```"):
+                        content = content[:-3]
+                    content = content.strip()
+                    
+                    try:
+                        extracted_data = json.loads(content)
+                        self.logger.info(f"✅ Successfully extracted {len(extracted_data)} fields from TXT document")
+                        return extracted_data
+                    except json.JSONDecodeError as e:
+                        self.logger.error(f"❌ Failed to parse JSON response: {e}")
+                        self.logger.debug(f"Response content: {content}")
+                        return None
+            
+            self.logger.warning("⚠️ OpenAI API response is empty or invalid")
+            return None
+            
+        except Exception as e:
+            error_type = type(e).__name__
+            error_msg = str(e)
+            self.logger.error(f"❌ Text extraction failed: {error_type} - {error_msg}")
+            import traceback
+            self.logger.error(f"Full traceback:\n{traceback.format_exc()}")
+            return None
+
 
 # Global LLM service instance
 _llm_service = None
@@ -449,7 +722,7 @@ def init_llm_service(api_key: str, provider: str = "openai", proxy_url: str = No
     
     Args:
         api_key: API key
-        provider: API provider, "openai" or "volcengine" (default: "openai")
+        provider: API provider, "openai" (default: "openai")
         proxy_url: Proxy URL (e.g., "http://127.0.0.1:7890")
         use_proxy: Whether to use proxy (default: False)
     """

@@ -144,32 +144,23 @@ GET /api/location-slopes?location=Broadwood
 
 ## LLM Integration
 
-### Supported Providers
+### Supported Provider
 
-**Primary**: OpenAI
+**OpenAI**
 - Model: gpt-4o-mini
 - Features: Request summarization, text analysis
 - Proxy support: Yes (for regional restrictions)
 
-**Alternative**: Volcengine (Doubao)
-- Model: Doubao-lite-4k
-- Features: Same as OpenAI
-- Region: China-optimized
-
 ### Configuration
 
 ```bash
-# OpenAI (Primary)
+# OpenAI
 OPENAI_API_KEY="your-key"
 LLM_PROVIDER="openai"
 
 # Proxy (if needed)
 OPENAI_PROXY_URL="socks5://localhost:7890"
-="true"
-
-# Volcengine (Alternative)
-ARK_API_KEY="your-key"
-LLM_PROVIDER="volcengine"
+OPENAI_USE_PROXY="true"
 ```
 
 ## Performance
@@ -253,7 +244,7 @@ http://localhost:3000
 ✅ **Integrated chat interface** (popup-based)  
 ✅ **Batch processing** (multiple files)  
 ✅ **Database management** (SQLite)  
-✅ **LLM integration** (OpenAI/Volcengine)  
+✅ **LLM integration** (OpenAI)  
 ✅ **Proxy support** (for regional restrictions)  
 
 ## Documentation

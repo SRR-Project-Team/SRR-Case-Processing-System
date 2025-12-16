@@ -7,7 +7,13 @@ echo "Environment variables at startup:"
 env | sort
 
 PORT=${PORT:-8080}
+DEBUG_PORT=${DEBUG_PORT:-}
+
 echo "Starting server on port $PORT"
+if [ -n "$DEBUG_PORT" ]; then
+    echo "🐛 Debug mode enabled - debugpy will listen on port $DEBUG_PORT"
+    echo "   The debugger will be started by Python code in main.py"
+fi
 
 exec uvicorn src.api.main:app --host 0.0.0.0 --port $PORT --log-level debug
 

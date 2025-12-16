@@ -1,0 +1,99 @@
+# Environment files (sensitive information)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Git related
+.git
+.gitignore
+.gitattributes
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+
+# Logs
+*.log
+logs/
+*.pid
+
+# Database files
+*.db
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+temp/
+tmp/
+
+# Test files
+test_*.py
+*_test.py
+*_test.pyc
+
+# Sensitive key files
+*.key
+github-actions-key.json
+srr-pipeline-*.json
+
+# Node modules (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Documentation (optional, reduce image size)
+*.md
+docs/
+
+# Example files
+exampleInput/
+example_*
+
+# Excel temp files
+~$*.xlsx
+~$*.xls
+
+# PDF temp files
+*.pdf.tmp
+
+# Frontend build (if not needed in backend image)
+frontend/
+
+
+
+
