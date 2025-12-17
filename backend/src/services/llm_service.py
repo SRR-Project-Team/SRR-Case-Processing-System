@@ -494,39 +494,29 @@ class LLMService:
                 self.logger.error(f"❌ Invalid file_type: {file_type}. Must be 'RCC' or 'TMO'")
                 return None
             
-            # Build prompt - unified for both RCC and TMO with minor differences
+            # Build prompt - unified for both RCC and TMO with bilingual hints
             doc_type_hint = "RCC" if file_type == "RCC" else "TMO"
-            date_field_hint = "案件接收日期" if file_type == "RCC" else "案件接收日期 (Date of Referral)"
-            source_hint = "来源 (usually RCC)" if file_type == "RCC" else "来源 (usually TMO)"
-            case_number_hint = "1823案件号 (RCC案件编号)" if file_type == "RCC" else "1823案件号 (if available)"
-            caller_hint = "来电人姓名" if file_type == "RCC" else "检查员姓名 (Inspection Officer)"
-            contact_hint = "联系电话" if file_type == "RCC" else "联系电话 (Contact)"
-            slope_hint = "斜坡编号 (e.g., 11SW-D/CR995)" if file_type == "RCC" else "斜坡编号 (from Form 2 ref. no., e.g., 11SW-B/F199)"
-            location_hint = "位置信息" if file_type == "RCC" else "位置信息 (District)"
-            nature_hint = "请求性质摘要" if file_type == "RCC" else "请求性质摘要 (Comments from TMO)"
-            subject_hint = "事项主题" if file_type == "RCC" else "事项主题 (usually Tree Trimming/Pruning)"
-            details_hint = "案件详情" if file_type == "RCC" else "案件详情 (Follow-up Actions)"
             
             prompt = f"""Extract the following fields from this {doc_type_hint} document image. Return a JSON object with these exact keys:
 {{
-  "A_date_received": "{date_field_hint} (dd-MMM-yyyy format, e.g., 15-Jan-2024)",
-  "B_source": "{source_hint}",
-  "C_case_number": "{case_number_hint}",
-  "D_type": "案件类型 (Emergency/Urgent/General)",
-  "E_caller_name": "{caller_hint}",
-  "F_contact_no": "{contact_hint}",
-  "G_slope_no": "{slope_hint}",
-  "H_location": "{location_hint}",
-  "I_nature_of_request": "{nature_hint}",
-  "J_subject_matter": "{subject_hint}",
-  "K_10day_rule_due_date": "10天规则截止日期 (dd-MMM-yyyy)",
-  "L_icc_interim_due": "ICC临时回复截止日期 (dd-MMM-yyyy)",
-  "M_icc_final_due": "ICC最终回复截止日期 (dd-MMM-yyyy)",
-  "N_works_completion_due": "工程完成截止日期 (dd-MMM-yyyy)",
-  "O1_fax_to_contractor": "发给承包商的传真日期 (YYYY-MM-DD)",
-  "O2_email_send_time": "邮件发送时间 (if applicable)",
-  "P_fax_pages": "传真页数",
-  "Q_case_details": "{details_hint}"
+  "A_date_received": "案件接收日期 (Date of Referral) (dd-MMM-yyyy format, e.g., 15-Jan-2024)",
+  "B_source": "来源 (Source)",
+  "C_case_number": "1823案件号 (Case Number)",
+  "D_type": "案件类型 (Case Type: Emergency/Urgent/General)",
+  "E_caller_name": "来电人姓名/检查员姓名 (Caller Name/Inspection Officer)",
+  "F_contact_no": "联系电话 (Contact Number)",
+  "G_slope_no": "斜坡编号 (Slope Number, e.g., 11SW-D/CR995 or 11SW-B/F199)",
+  "H_location": "位置信息 (Location/District)",
+  "I_nature_of_request": "请求性质摘要 (Nature of Request/Comments)",
+  "J_subject_matter": "事项主题 (Subject Matter, usually Tree Trimming/Pruning)",
+  "K_10day_rule_due_date": "10天规则截止日期 (10-day Rule Due Date) (dd-MMM-yyyy)",
+  "L_icc_interim_due": "ICC临时回复截止日期 (ICC Interim Reply Due Date) (dd-MMM-yyyy)",
+  "M_icc_final_due": "ICC最终回复截止日期 (ICC Final Reply Due Date) (dd-MMM-yyyy)",
+  "N_works_completion_due": "工程完成截止日期 (Works Completion Due Date) (dd-MMM-yyyy)",
+  "O1_fax_to_contractor": "发给承包商的传真日期 (Fax to Contractor Date) (YYYY-MM-DD)",
+  "O2_email_send_time": "邮件发送时间 (Email Send Time) (if applicable)",
+  "P_fax_pages": "传真页数 (Fax Pages)",
+  "Q_case_details": "案件详情 (Case Details/Follow-up Actions)"
 }}
 
 Extract all visible information from the document. If a field is not found, use empty string. For dates, use the specified format."""
