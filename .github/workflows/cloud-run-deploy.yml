@@ -16,6 +16,7 @@ env:
 
 jobs:
   deploy:
+    if: false  # 已禁用：自動部署已關閉
     name: Deploy to Cloud Run
     runs-on: ubuntu-latest
     
