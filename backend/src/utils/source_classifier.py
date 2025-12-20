@@ -2,207 +2,60 @@
 # -*- coding: utf-8 -*-
 """
 来源classify器
-根据fileclass型、内容和语义智能判断B_sourcefield的value
+根据文件处理类型直接判断B_source字段的值
+简化规则：仅支持4个类别 - TMO、ICC、RCC、Others
 """
 
-import re
-import os
-from typing import Optional, Dict, List
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SourceClassifier:
     """来源classify器"""
     
     def __init__(self):
-        """initializeclassify器"""
-        self.source_options = {
-            "": "",
-            "1": "ICC",
-            "2": "Telephone", 
-            "3": "E-mail",
-            "4": "RCC",
-            "5": "Memo/Letter",
-            "6": "Fax",
-            "7": "Audit Report",
-            "8": "TMO",
-            "9": "BDRC",
-            "10": "DC",
-            "11": "Press",
-            "12": "Others"
-        }
-        
-        # 反向map，用于find
-        self.source_name_to_id = {v: k for k, v in self.source_options.items() if v}
-        
-        # 关key词map
-        self.keyword_mappings = self._build_keyword_mappings()
+        """初始化分类器"""
+        pass
     
-    def _build_keyword_mappings(self) -> Dict[str, List[str]]:
-        """构建关键词映射"""
-        return {
-            "ICC": [
-                "icc", "inter-departmental", "interdepartmental", 
-                "internal communication", "內部通訊"
-            ],
-            "Telephone": [
-                "telephone", "phone", "tel:", "call", "致電", "電話", "通話"
-            ],
-            "E-mail": [
-                "email", "e-mail", "mail", "electronic mail", "郵件", "電郵",
-                "from:", "to:", "subject:", "sent:", "@", "inbox", "outbox"
-            ],
-            "RCC": [
-                "rcc", "regional complaint", "complaint centre", "投訴中心"
-            ],
-            "Memo/Letter": [
-                "memo", "memorandum", "letter", "correspondence", 
-                "備忘錄", "信件", "函件", "通函"
-            ],
-            "Fax": [
-                "fax", "facsimile", "傳真", "fax no", "fax number"
-            ],
-            "Audit Report": [
-                "audit", "audit report", "auditing", "審計", "審核報告"
-            ],
-            "TMO": [
-                "tmo", "tree management office", "樹木管理辦事處",
-                "tree management", "arboriculture"
-            ],
-            "BDRC": [
-                "bdrc", "building department", "屋宇署"
-            ],
-            "DC": [
-                "dc", "district council", "區議會", "district councillor"
-            ],
-            "Press": [
-                "press", "media", "newspaper", "journalist", "reporter",
-                "新聞", "媒體", "記者", "報章"
-            ]
-        }
-    
-    def classify_source(self, file_path: str = None, content: str = "", 
-                       email_content: str = None, file_type: str = "txt") -> str:
+    def classify_source(self, processing_type: str = None, file_path: str = None, 
+                       content: str = "", email_content: str = None, 
+                       file_type: str = "txt") -> str:
         """
-        智能classify来源
+        根据处理类型直接分类来源
+        
+        规则：
+        - processing_type="txt" → "ICC" (1823通过邮件或app发送的TXT文件)
+        - processing_type="tmo" → "TMO" (TMO通过邮件发送的PDF文件，ASD开头)
+        - processing_type="rcc" → "RCC" (RCC通过传真扫描的PDF文件，RCC开头)
+        - 其他情况 → "Others"
         
         Args:
-            file_path (str): file path
-            content (str): 文件内容
-            email_content (str): 邮件内容（如果有）
-            file_type (str): 文件class型 ('txt', 'pdf')
+            processing_type (str): 文件处理类型 ('txt', 'tmo', 'rcc', 'unknown')
+            file_path (str): file path (保留用于向后兼容)
+            content (str): 文件内容 (保留用于向后兼容)
+            email_content (str): 邮件内容 (保留用于向后兼容)
+            file_type (str): 文件class型 (保留用于向后兼容)
             
         Returns:
-            str: 来源名称 (如 'E-mail', 'TMO', 'RCC' 等)
+            str: 来源名称 ('TMO', 'ICC', 'RCC', 'Others')
         """
-        print(f"🔍 开始来源classify...")
-        print(f"   file path: {file_path}")
-        print(f"   文件class型: {file_type}")
-        print(f"   有邮件内容: {'是' if email_content else '否'}")
+        logger.debug(f"🔍 开始来源分类...")
+        logger.debug(f"   处理类型: {processing_type}")
         
-        # 1. 优先级规则：邮件内容存在
-        if email_content and email_content.strip():
-            print("📧 检测到邮件内容，classify为 E-mail")
-            return "E-mail"
-        
-        # 2. file名规则：ASD开头的PDFfile
-        if file_path and file_type.lower() == "pdf":
-            filename = os.path.basename(file_path).upper()
-            if filename.startswith("ASD"):
-                print("🌳 检测到ASD开头的PDF文件，classify为 TMO")
-                return "TMO"
-        
-        # 3. file名规则：RCC开头的PDFfile
-        if file_path and file_type.lower() == "pdf":
-            filename = os.path.basename(file_path).upper()
-            if filename.startswith("RCC"):
-                print("📋 检测到RCC开头的PDF文件，classify为 RCC")
-                return "RCC"
-        
-        # 4. 内容analyze
-        content_source = self._analyze_content(content)
-        if content_source:
-            print(f"📄 根据内容分析，classify为 {content_source}")
-            return content_source
-        
-        # 5. fileclass型默认规则
-        if file_type.lower() == "pdf":
-            print("📄 PDF文件默认classify为 Others")
+        # 根据处理类型直接返回对应的源类型
+        if processing_type == "txt":
+            logger.info("📝 TXT文件，分类为 ICC (1823)")
+            return "ICC"
+        elif processing_type == "tmo":
+            logger.info("🌳 TMO PDF文件，分类为 TMO")
+            return "TMO"
+        elif processing_type == "rcc":
+            logger.info("📋 RCC PDF文件，分类为 RCC")
+            return "RCC"
+        else:
+            logger.warning("❓ 未知处理类型，使用默认值 Others")
             return "Others"
-        
-        # 6. TXTfile的渠道analyze
-        if file_type.lower() == "txt":
-            txt_source = self._analyze_txt_channel(content)
-            if txt_source:
-                print(f"📝 根据TXT渠道分析，classify为 {txt_source}")
-                return txt_source
-        
-        # 7. 默认value
-        print("❓ 无法确定来源，使用默认值 Others")
-        return "Others"
-    
-    def _analyze_content(self, content: str) -> Optional[str]:
-        """分析内容确定来源"""
-        if not content:
-            return None
-        
-        content_lower = content.lower()
-        
-        # 按优先级check关key词
-        priority_sources = [
-            "TMO", "RCC", "ICC", "BDRC", "DC", 
-            "E-mail", "Fax", "Telephone", "Press", 
-            "Audit Report", "Memo/Letter"
-        ]
-        
-        for source in priority_sources:
-            keywords = self.keyword_mappings.get(source, [])
-            for keyword in keywords:
-                if keyword.lower() in content_lower:
-                    return source
-        
-        return None
-    
-    def _analyze_txt_channel(self, content: str) -> Optional[str]:
-        """分析TXT文件的Channelfield"""
-        if not content:
-            return None
-        
-        # extractChannelfield
-        channel_match = re.search(r'Channel\s*:\s*([^\n]+)', content, re.IGNORECASE)
-        if not channel_match:
-            return None
-        
-        channel = channel_match.group(1).strip().lower()
-        print(f"🔍 检测到Channel: {channel}")
-        
-        # Channelmap规则
-        channel_mappings = {
-            "email": "E-mail",
-            "e-mail": "E-mail", 
-            "web": "E-mail",  # Web通常通过邮件系统process
-            "telephone": "Telephone",
-            "phone": "Telephone",
-            "tel": "Telephone",
-            "fax": "Fax",
-            "letter": "Memo/Letter",
-            "memo": "Memo/Letter",
-            "rcc": "RCC",
-            "icc": "ICC"
-        }
-        
-        for pattern, source in channel_mappings.items():
-            if pattern in channel:
-                return source
-        
-        return None
-    
-    def get_source_name_by_id(self, source_id: str) -> str:
-        """根据ID获取来源名称"""
-        return self.source_options.get(source_id, "Others")
-    
-    def get_all_sources(self) -> Dict[str, str]:
-        """获取所有来源选项"""
-        return self.source_options.copy()
 
 
 # 全局classify器instance
@@ -217,71 +70,58 @@ def get_source_classifier() -> SourceClassifier:
     return _source_classifier
 
 
-def classify_source_smart(file_path: str = None, content: str = "", 
-                         email_content: str = None, file_type: str = "txt") -> str:
+def classify_source_smart(processing_type: str = None, file_path: str = None, 
+                         content: str = "", email_content: str = None, 
+                         file_type: str = "txt") -> str:
     """
-    智能classify来源的便捷函数
+    根据处理类型分类来源的便捷函数
     
     Args:
-        file_path (str): file path
-        content (str): 文件内容
-        email_content (str): 邮件内容（如果有）
-        file_type (str): 文件class型
+        processing_type (str): 文件处理类型 ('txt', 'tmo', 'rcc', 'unknown') - 必需参数
+        file_path (str): file path (保留用于向后兼容)
+        content (str): 文件内容 (保留用于向后兼容)
+        email_content (str): 邮件内容 (保留用于向后兼容)
+        file_type (str): 文件class型 (保留用于向后兼容)
         
     Returns:
-        str: 来源名称 (如 'E-mail', 'TMO', 'RCC' 等)
+        str: 来源名称 ('TMO', 'ICC', 'RCC', 'Others')
     """
     classifier = get_source_classifier()
-    return classifier.classify_source(file_path, content, email_content, file_type)
+    return classifier.classify_source(processing_type, file_path, content, email_content, file_type)
 
 
 def test_source_classifier():
     """测试来源classify器"""
-    print("=== 来源classify器测试 ===\n")
+    print("=== 来源分类器测试 ===\n")
     
     classifier = SourceClassifier()
     
-    # test用例
+    # test用例 - 根据新的简化规则
     test_cases = [
         {
-            'name': 'TXT文件带邮件内容',
-            'file_path': 'case_123.txt',
-            'content': 'Channel : Email\nRequest Type : Enquiry',
-            'email_content': 'From: user@example.com\nTo: 1823@gov.hk\nSubject: Slope inquiry',
-            'file_type': 'txt',
-            'expected': 'E-mail'
+            'name': 'TXT文件处理类型',
+            'processing_type': 'txt',
+            'expected': 'ICC'
         },
         {
-            'name': 'ASD开头的PDF文件',
-            'file_path': 'ASD-WC-20250089-PP.pdf',
-            'content': 'Tree Management Office Form 2',
-            'email_content': None,
-            'file_type': 'pdf',
+            'name': 'TMO PDF文件处理类型',
+            'processing_type': 'tmo',
             'expected': 'TMO'
         },
         {
-            'name': 'RCC开头的PDF文件',
-            'file_path': 'RCC#84878800.pdf',
-            'content': 'Regional Complaint Centre',
-            'email_content': None,
-            'file_type': 'pdf',
+            'name': 'RCC PDF文件处理类型',
+            'processing_type': 'rcc',
             'expected': 'RCC'
         },
         {
-            'name': 'TXT文件电话渠道',
-            'file_path': 'case_456.txt',
-            'content': 'Channel : Telephone\nRequest Type : Complaint',
-            'email_content': None,
-            'file_type': 'txt',
-            'expected': 'Telephone'
+            'name': '未知处理类型',
+            'processing_type': 'unknown',
+            'expected': 'Others'
         },
         {
-            'name': 'TXT文件传真渠道',
-            'file_path': 'case_789.txt',
-            'content': 'Channel : Fax\nFax No: 12345678',
-            'email_content': None,
-            'file_type': 'txt',
-            'expected': 'Fax'
+            'name': 'None处理类型',
+            'processing_type': None,
+            'expected': 'Others'
         }
     ]
     
@@ -292,10 +132,7 @@ def test_source_classifier():
         print(f"\n{i}. {test_case['name']}")
         
         result = classifier.classify_source(
-            test_case['file_path'],
-            test_case['content'],
-            test_case['email_content'],
-            test_case['file_type']
+            processing_type=test_case['processing_type']
         )
         
         expected = test_case['expected']
@@ -304,18 +141,18 @@ def test_source_classifier():
             print(f"   ✅ 正确: {result}")
             success_count += 1
         else:
-            print(f"   ❌ error:")
+            print(f"   ❌ 错误:")
             print(f"      期望: {expected}")
             print(f"      实际: {result}")
     
     accuracy = success_count / len(test_cases)
-    print(f"\n📈 classifyaccuracy: {accuracy:.1%} ({success_count}/{len(test_cases)})")
+    print(f"\n📈 分类准确率: {accuracy:.1%} ({success_count}/{len(test_cases)})")
     
-    # 显示所有来源选项
-    print(f"\n📋 所有来源选项:")
-    for source_id, source_name in classifier.get_all_sources().items():
-        if source_name:  # 跳过空选项
-            print(f"   {source_id}: {source_name}")
+    # 显示有效来源选项
+    print(f"\n📋 有效来源选项:")
+    valid_sources = ['TMO', 'ICC', 'RCC', 'Others']
+    for source in valid_sources:
+        print(f"   - {source}")
 
 
 if __name__ == "__main__":

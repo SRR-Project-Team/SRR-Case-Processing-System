@@ -28,7 +28,8 @@ from typing import Optional, Tuple, Dict, Any
 import os
 import PyPDF2
 import sys
-import os
+import logging
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.file_utils import extract_text_from_pdf_fast
 
@@ -37,6 +38,8 @@ from ai.ai_subject_matter_classifier import classify_subject_matter_ai
 from ai.ai_request_summarizer import generate_ai_request_summary
 from utils.slope_location_mapper import get_location_from_slope_no
 from utils.source_classifier import classify_source_smart
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -239,7 +242,7 @@ def extract_slope_no_from_form_ref(content: str) -> str:
     Returns:
         str: extract并清理后的斜坡编号
     """
-    print("🔍 TMO开始extract斜坡编号...")
+    logger.debug("🔍 TMO开始extract斜坡编号...")
     
     # 模式1: slope.no 后面的内容
     slope_patterns = [
@@ -253,7 +256,7 @@ def extract_slope_no_from_form_ref(content: str) -> str:
         if match:
             slope_no = clean_slope_number_tmo(match.group(1))
             if slope_no:
-                print(f"✅ 从slope.noextract斜坡编号: {slope_no}")
+                logger.info(f"✅ 从slope.noextract斜坡编号: {slope_no}")
                 return slope_no
     
     # 模式2: Form 2 ref. no 后面的内容中extract
@@ -265,7 +268,7 @@ def extract_slope_no_from_form_ref(content: str) -> str:
             slope_part = slope_match.group(1).upper()
             slope_no = format_slope_number_tmo(slope_part)
             if slope_no:
-                print(f"✅ 从Form 2 ref. noextract斜坡编号: {slope_no}")
+                logger.info(f"✅ 从Form 2 ref. noextract斜坡编号: {slope_no}")
                 return slope_no
     
     # 模式3: 斜坡编号 后面的内容
@@ -280,10 +283,10 @@ def extract_slope_no_from_form_ref(content: str) -> str:
         if match:
             slope_no = clean_slope_number_tmo(match.group(1))
             if slope_no:
-                print(f"✅ 从斜坡编号extract: {slope_no}")
+                logger.info(f"✅ 从斜坡编号extract: {slope_no}")
                 return slope_no
     
-    print("⚠️ TMO未找到斜坡编号")
+    logger.warning("⚠️ TMO未找到斜坡编号")
     return ""
 
 
@@ -424,11 +427,11 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
         return result
     
     # 备用方法：使用传统OCR提取
-    print("📄 使用传统OCR方法提取PDF内容...")
+    logger.info("📄 使用传统OCR方法提取PDF内容...")
     content = extract_text_from_pdf_fast(pdf_path)
     
     if not content:
-        print("⚠️ 无法extractPDFtext content")
+        logger.warning("⚠️ 无法extractPDFtext content")
         return _get_empty_result()
     
     # 初始化结果字典
@@ -441,8 +444,9 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
     date_match = re.search(r'Date of Referral\s+(\d{1,2}\s+\w+\s+\d{4})', content)
     A_date = parse_date(date_match.group(1).strip()) if date_match else None
     
-    # B: 来源（智能classify）
+    # B: 来源（根据处理类型直接分类）
     result['B_source'] = classify_source_smart(
+        processing_type='tmo',
         file_path=pdf_path, 
         content=content, 
         email_content=None, 
@@ -454,7 +458,7 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
     
     # D: 案件class型 (使用AIclassify)
     try:
-        print("🤖 TMO使用AIclassify案件class型...")
+        logger.info("🤖 TMO使用AIclassify案件class型...")
         case_data_for_ai = {
             'I_nature_of_request': result.get('I_nature_of_request', ''),
             'J_subject_matter': result.get('J_subject_matter', ''),
@@ -466,9 +470,9 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
         }
         ai_result = classify_case_type_ai(case_data_for_ai)
         result['D_type'] = ai_result.get('predicted_type', 'General')
-        print(f"✅ TMO AIclassify完成: {result['D_type']} (confidence: {ai_result.get('confidence', 0):.2f})")
+        logger.info(f"✅ TMO AIclassify完成: {result['D_type']} (confidence: {ai_result.get('confidence', 0):.2f})")
     except Exception as e:
-        print(f"⚠️ TMO AIclassifyfailed，使用传统method: {e}")
+        logger.warning(f"⚠️ TMO AIclassifyfailed，使用传统method: {e}")
         # 传统classifymethod作为备用
         if "urgent" in content.lower() or "紧急" in content:
             result['D_type'] = "Urgent"
@@ -490,18 +494,18 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
     
     # I: request性质摘要 (使用AI从PDF内容生成具体request摘要)
     try:
-        print("🤖 TMO使用AI生成请求摘要...")
+        logger.info("🤖 TMO使用AI生成请求摘要...")
         ai_summary = generate_ai_request_summary(content, None, 'pdf')
         result['I_nature_of_request'] = ai_summary
-        print(f"✅ TMO AI请求摘要生成success: {ai_summary}")
+        logger.info(f"✅ TMO AI请求摘要生成success: {ai_summary}")
     except Exception as e:
-        print(f"⚠️ TMO AI摘要生成failed，使用备用method: {e}")
+        logger.warning(f"⚠️ TMO AI摘要生成failed，使用备用method: {e}")
         # 备用method：使用原有的评论extract
         result['I_nature_of_request'] = extract_comments(content)
     
     # J: 事项主题 (使用AIclassify器)
     try:
-        print("🤖 TMO使用AIclassify主题...")
+        logger.info("🤖 TMO使用AIclassify主题...")
         subject_data_for_ai = {
             'I_nature_of_request': result.get('I_nature_of_request', ''),
             'J_subject_matter': "Tree Risk Assessment Form 2",
@@ -510,9 +514,9 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
         }
         ai_subject_result = classify_subject_matter_ai(subject_data_for_ai)
         result['J_subject_matter'] = ai_subject_result.get('predicted_category', 'Tree Trimming/ Pruning')
-        print(f"✅ TMO主题classify完成: {result['J_subject_matter']} (confidence: {ai_subject_result.get('confidence', 0):.2f})")
+        logger.info(f"✅ TMO主题classify完成: {result['J_subject_matter']} (confidence: {ai_subject_result.get('confidence', 0):.2f})")
     except Exception as e:
-        print(f"⚠️ TMO主题classifyfailed，使用默认: {e}")
+        logger.warning(f"⚠️ TMO主题classifyfailed，使用默认: {e}")
         result['J_subject_matter'] = "Tree Trimming/ Pruning"
     
     # K: 10天规则截止日期 (A+10天)

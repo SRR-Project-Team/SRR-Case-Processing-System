@@ -25,8 +25,11 @@ from datetime import datetime, timedelta
 from typing import Optional, Tuple
 import os
 import sys
-import os
+import logging
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+logger = logging.getLogger(__name__)
 
 from ai.ai_case_type_classifier import classify_case_type_ai
 from utils.email_info_extractor import get_email_contact_info
@@ -147,42 +150,13 @@ def extract_1823_case_no(content: str) -> str:
     match = re.search(r'1823\s+case:\s*([\w\-:]+)', content, re.IGNORECASE)
     if match:
         case_number = match.group(1).strip()
-        print(f"✅ extract到1823案件编号: {case_number}")
+        logger.info(f"✅ extract到1823案件编号: {case_number}")
         return case_number
     
-    print("⚠️ 未找到1823案件编号")
+    logger.warning("⚠️ 未找到1823案件编号")
     return ""
 
 
-def get_source_from_content(content: str) -> str:
-    """
-    extract来源B（根据内容中的渠道/commit方式判断）
-    
-    从Channelfield判断案件来源，支持以下映射：
-    - Web -> 1823
-    - RCC/ICC -> 保持原值
-    
-    Args:
-        content (str): TXT文件内容
-        
-    Returns:
-        str: 案件来源标识
-        
-    Example:
-        >>> content = "Channel : Web"
-        >>> get_source_from_content(content)
-        "1823"
-    """
-    # 示例逻辑：从Channelfield或Contact Historyextract
-    channel_match = re.search(r'Channel :\s*(.*?)\n', content)
-    if channel_match:
-        channel = channel_match.group(1).strip()
-        # map规则：Web->1823，其他可能valueRCC/ICC需根据实际文本调整
-        if channel == "Web":
-            return "1823"
-        elif re.search(r'RCC|ICC', channel, re.IGNORECASE):
-            return channel.upper()
-    return ""
 
 
 def get_caller_info_by_source(content: str, source: str) -> Tuple[str, str]:
@@ -221,7 +195,7 @@ def get_caller_info_by_source(content: str, source: str) -> Tuple[str, str]:
 def classify_case_type_ai_enhanced(case_data: dict) -> str:
     """使用AI增强的案件class型classify - 基于历史data和SRR规则"""
     try:
-        print("🤖 使用AIclassify案件class型...")
+        logger.info("🤖 使用AIclassify案件class型...")
         
         # 调用AIclassify器
         ai_result = classify_case_type_ai(case_data)
@@ -230,12 +204,12 @@ def classify_case_type_ai_enhanced(case_data: dict) -> str:
         confidence = ai_result.get('confidence', 0.5)
         method = ai_result.get('method', 'unknown')
         
-        print(f"✅ AIclassify完成: {predicted_type} (confidence: {confidence:.2f}, method: {method})")
+        logger.info(f"✅ AIclassify完成: {predicted_type} (confidence: {confidence:.2f}, method: {method})")
         
         return predicted_type
         
     except Exception as e:
-        print(f"⚠️ AIclassifyfailed，使用传统method: {e}")
+        logger.warning(f"⚠️ AIclassifyfailed，使用传统method: {e}")
         return classify_case_type_traditional(case_data.get('content', ''))
 
 def classify_case_type_traditional(content: str) -> str:
@@ -277,13 +251,13 @@ def generate_nature_summary(content: str) -> str:
         # 使用NLP技术summarize诉求内容
         nlp_summary = get_nlp_enhanced_nature_of_request(content, email_content)
         if nlp_summary:
-            print(f"✅ NLP增强摘要success: {nlp_summary}")
+            logger.info(f"✅ NLP增强摘要success: {nlp_summary}")
             return nlp_summary
             
     except ImportError:
-        print("⚠️ NLP增强process器不可用，使用传统method")
+        logger.warning("⚠️ NLP增强process器不可用，使用传统method")
     except Exception as e:
-        print(f"⚠️ NLPprocessfailed: {e}，使用传统method")
+        logger.warning(f"⚠️ NLPprocessfailed: {e}，使用传统method")
     
     # 传统method作为备选
     if len(content) > 100:
@@ -311,13 +285,13 @@ def generate_nature_summary_from_original(original_content: str) -> str:
         # 使用原始内容进行NLPsummarize，生成简洁result
         nlp_summary = get_nlp_enhanced_nature_of_request(original_content, email_content)
         if nlp_summary:
-            print(f"✅ 原始内容NLP摘要success: {nlp_summary}")
+            logger.info(f"✅ 原始内容NLP摘要success: {nlp_summary}")
             return nlp_summary
             
     except ImportError:
-        print("⚠️ NLP增强process器不可用，使用传统method")
+        logger.warning("⚠️ NLP增强process器不可用，使用传统method")
     except Exception as e:
-        print(f"⚠️ NLPprocessfailed: {e}，使用传统method")
+        logger.warning(f"⚠️ NLPprocessfailed: {e}，使用传统method")
     
     # 传统method作为备选
     if len(original_content) > 100:
@@ -403,7 +377,7 @@ def extract_case_data_from_txt(txt_path: str) -> dict:
     try:
         content = read_file_with_encoding(txt_path)
     except Exception as e:
-        print(f"⚠️ 无法读取TXT文件: {e}")
+        logger.error(f"⚠️ 无法读取TXT文件: {e}")
         return _get_empty_result()
     
     # check是否有对应的邮件file
@@ -416,29 +390,29 @@ def extract_case_data_from_txt(txt_path: str) -> dict:
         email_path = os.path.join(dir_path, f"emailcontent_{base_name}.txt")
         
         if os.path.exists(email_path):
-            print(f"📧 发现邮件文件: {email_path}")
+            logger.info(f"📧 发现邮件文件: {email_path}")
             try:
                 email_content = read_file_with_encoding(email_path)
             except Exception as e:
-                print(f"⚠️ 邮件文件读取failed: {e}")
+                logger.warning(f"⚠️ 邮件文件读取failed: {e}")
                 email_content = None
         else:
-            print(f"ℹ️ 未找到邮件文件: {email_path}")
+            logger.debug(f"ℹ️ 未找到邮件文件: {email_path}")
             
     except Exception as e:
-        print(f"⚠️ 邮件文件processfailed: {e}")
+        logger.warning(f"⚠️ 邮件文件processfailed: {e}")
     
     # 使用OpenAI大模型提取A-Q字段
     try:
         from services.llm_service import get_llm_service
         
-        print("🤖 使用OpenAI大模型提取TXT文档A-Q字段...")
+        logger.info("🤖 使用OpenAI大模型提取TXT文档A-Q字段...")
         llm_service = get_llm_service()
         extracted_data = llm_service.extract_fields_from_text(content, email_content)
         
         if extracted_data:
             result = extracted_data
-            print(f"✅ 成功从TXT文档提取 {len(result)} 个字段")
+            logger.info(f"✅ 成功从TXT文档提取 {len(result)} 个字段")
             
             # 计算日期相关字段（如果A_date_received存在）
             if result.get('A_date_received'):
@@ -465,14 +439,14 @@ def extract_case_data_from_txt(txt_path: str) -> dict:
             
             return result
         else:
-            print("⚠️ OpenAI大模型未能提取字段，使用备用方法...")
+            logger.warning("⚠️ OpenAI大模型未能提取字段，使用备用方法...")
     except Exception as e:
-        print(f"⚠️ OpenAI大模型提取失败: {e}")
+        logger.warning(f"⚠️ OpenAI大模型提取失败: {e}")
         import traceback
-        traceback.print_exc()
+        logger.debug(traceback.format_exc())
     
     # 备用方法：使用传统提取逻辑
-    print("📄 使用传统方法提取TXT内容...")
+    logger.info("📄 使用传统方法提取TXT内容...")
     return extract_case_data_with_email(content, email_content, content, txt_path)
 
 
@@ -495,14 +469,14 @@ def extract_case_data_with_email(content: str, email_content: str = None, origin
     if email_content:
         # 1. 使用AI生成具体的request摘要（优先使用邮件内容）
         try:
-            print("🤖 使用AI从邮件内容生成请求摘要...")
+            logger.info("🤖 使用AI从邮件内容生成请求摘要...")
             ai_summary = generate_ai_request_summary(content, email_content, 'txt')
             if ai_summary and ai_summary != "无法extract具体请求内容":
                 result['I_nature_of_request'] = ai_summary
-                print(f"✅ AI邮件请求摘要生成success: {ai_summary}")
+                logger.info(f"✅ AI邮件请求摘要生成success: {ai_summary}")
             
         except Exception as e:
-            print(f"⚠️ AI邮件摘要生成failed: {e}，使用原有摘要")
+            logger.warning(f"⚠️ AI邮件摘要生成failed: {e}，使用原有摘要")
         
         # 2. 从邮件内容extract联系information（E_caller_name和F_contact_no）
         try:
@@ -511,14 +485,14 @@ def extract_case_data_with_email(content: str, email_content: str = None, origin
             # 如果邮件中有联系information，优先使用邮件information
             if email_contact_info.get('E_caller_name'):
                 result['E_caller_name'] = email_contact_info['E_caller_name']
-                print(f"✅ 从邮件extract联系人姓名: {email_contact_info['E_caller_name']}")
+                logger.info(f"✅ 从邮件extract联系人姓名: {email_contact_info['E_caller_name']}")
             
             if email_contact_info.get('F_contact_no'):
                 result['F_contact_no'] = email_contact_info['F_contact_no']
-                print(f"✅ 从邮件extract联系电话: {email_contact_info['F_contact_no']}")
+                logger.info(f"✅ 从邮件extract联系电话: {email_contact_info['F_contact_no']}")
                 
         except Exception as e:
-            print(f"⚠️ 邮件联系informationextractfailed: {e}，使用原有information")
+            logger.warning(f"⚠️ 邮件联系informationextractfailed: {e}，使用原有information")
     
     return result
 
@@ -569,8 +543,9 @@ def extract_case_data(content: str, original_content: str = None, email_content:
     A_date = parse_date(creation_date_match.group(1)) if creation_date_match else None
     result['A_date_received'] = format_date(A_date)
     
-    # B: 来源（智能classify）
+    # B: 来源（根据处理类型直接分类）
     result['B_source'] = classify_source_smart(
+        processing_type='txt',
         file_path=file_path, 
         content=content, 
         email_content=email_content, 
@@ -591,13 +566,13 @@ def extract_case_data(content: str, original_content: str = None, email_content:
     
     # I: request性质摘要 - 使用AI从邮件或内容中生成具体request摘要
     try:
-        print("🤖 TXT使用AI生成请求摘要...")
+        logger.info("🤖 TXT使用AI生成请求摘要...")
         source_content = original_content if original_content else content
         ai_summary = generate_ai_request_summary(source_content, email_content, 'txt')
         result['I_nature_of_request'] = ai_summary
-        print(f"✅ TXT AI请求摘要生成success: {ai_summary}")
+        logger.info(f"✅ TXT AI请求摘要生成success: {ai_summary}")
     except Exception as e:
-        print(f"⚠️ TXT AI摘要生成failed，使用备用method: {e}")
+        logger.warning(f"⚠️ TXT AI摘要生成failed，使用备用method: {e}")
         # 备用method：使用原有的NLPprocess
         if original_content:
             result['I_nature_of_request'] = generate_nature_summary_from_original(original_content)
@@ -610,7 +585,7 @@ def extract_case_data(content: str, original_content: str = None, email_content:
     
     # 使用AIclassify器增强J_subject_matter
     try:
-        print("🤖 TXT使用AIclassify主题...")
+        logger.info("🤖 TXT使用AIclassify主题...")
         subject_data_for_ai = {
             'I_nature_of_request': result.get('I_nature_of_request', ''),
             'J_subject_matter': extracted_subject,
@@ -619,9 +594,9 @@ def extract_case_data(content: str, original_content: str = None, email_content:
         }
         ai_subject_result = classify_subject_matter_ai(subject_data_for_ai)
         result['J_subject_matter'] = ai_subject_result.get('predicted_category', extracted_subject or 'Others')
-        print(f"✅ TXT主题classify完成: {result['J_subject_matter']} (confidence: {ai_subject_result.get('confidence', 0):.2f})")
+        logger.info(f"✅ TXT主题classify完成: {result['J_subject_matter']} (confidence: {ai_subject_result.get('confidence', 0):.2f})")
     except Exception as e:
-        print(f"⚠️ TXT主题classifyfailed，使用原始extract: {e}")
+        logger.warning(f"⚠️ TXT主题classifyfailed，使用原始extract: {e}")
         result['J_subject_matter'] = extracted_subject or "Others"
     
     # D: 案件class型（使用AIclassify）

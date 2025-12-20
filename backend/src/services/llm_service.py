@@ -500,7 +500,7 @@ class LLMService:
             prompt = f"""Extract the following fields from this {doc_type_hint} document image. Return a JSON object with these exact keys:
 {{
   "A_date_received": "案件接收日期 (Date of Referral) (dd-MMM-yyyy format, e.g., 15-Jan-2024)",
-  "B_source": "来源 (Source)",
+  "B_source": "来源 (Source). 必须是以下4个值之一: 'TMO','ICC','RCC','Others'. 根据文档类型: 如果是TXT文件，返回'ICC'; 如果是ASD开头的PDF文件, 返回'TMO'; 如果是RCC开头的PDF文件, 返回'RCC'; 其他情况返回'Others'.",
   "C_case_number": "1823案件号 (Case Number)",
   "D_type": "案件类型 (Case Type: Emergency/Urgent/General)",
   "E_caller_name": "来电人姓名/检查员姓名 (Caller Name/Inspection Officer)",
@@ -617,7 +617,7 @@ Extract all visible information from the document. If a field is not found, use 
             prompt = """Extract the following fields from this TXT case file content. Return a JSON object with these exact keys:
 {
   "A_date_received": "案件接收日期 (Case Creation Date, dd-MMM-yyyy format, e.g., 15-Jan-2024)",
-  "B_source": "来源 (Channel/Source, e.g., ICC, Telephone, E-mail, RCC, TMO, Web)",
+  "B_source": "来源 (Source). 必须是以下4个值之一: 'TMO','ICC','RCC','Others'. 根据文档类型: 如果是TXT文件，返回'ICC'; 如果是ASD开头的PDF文件, 返回'TMO'; 如果是RCC开头的PDF文件, 返回'RCC'; 其他情况返回'Others'.",
   "C_case_number": "1823案件号 (1823 case number, if available)",
   "D_type": "案件类型 (Emergency/Urgent/General)",
   "E_caller_name": "来电人姓名 (Caller Name)",
