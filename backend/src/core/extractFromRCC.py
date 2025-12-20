@@ -22,7 +22,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 from typing import Optional, Tuple, Dict, Any
 import sys
-import os
+import logging
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.file_utils import extract_content_with_multiple_methods
 
@@ -31,6 +32,8 @@ from ai.ai_subject_matter_classifier import classify_subject_matter_ai
 from ai.ai_request_summarizer import generate_ai_request_summary
 from utils.slope_location_mapper import get_location_from_slope_no
 from utils.source_classifier import classify_source_smart
+
+logger = logging.getLogger(__name__)
 
 
 def parse_date(date_str: str) -> Optional[datetime]:
@@ -117,7 +120,7 @@ def extract_text_with_ocr_traditional(pdf_path: str) -> str:
         from PIL import Image
         import io
         
-        print("使用传统EasyOCRextract文本...")
+        logger.info("使用传统EasyOCRextract文本...")
         
         # initializeEasyOCR (只使用英文，避免语言冲突，提高speed)
         reader = easyocr.Reader(['en'], gpu=False, verbose=False, download_enabled=True)
@@ -127,7 +130,7 @@ def extract_text_with_ocr_traditional(pdf_path: str) -> str:
         for page_num in range(len(doc)):
             # checkprocess时间限制
             if time.time() - start_time > max_processing_time:
-                print(f"⏰ OCRprocess超时({max_processing_time}秒)，停止process")
+                logger.warning(f"⏰ OCRprocess超时({max_processing_time}秒)，停止process")
                 break
                 
             page = doc.load_page(page_num)
@@ -155,15 +158,15 @@ def extract_text_with_ocr_traditional(pdf_path: str) -> str:
             
             if page_text.strip():
                 content += page_text.strip() + "\n"
-                print(f"EasyOCRsuccessextract页面{page_num+1}文本: {len(page_text)}字符")
+                logger.debug(f"EasyOCRsuccessextract页面{page_num+1}文本: {len(page_text)}字符")
         
         doc.close()
         return content
         
     except ImportError:
-        print("EasyOCR未安装，尝试其他method...")
+        logger.debug("EasyOCR未安装，尝试其他method...")
     except Exception as e:
-        print(f"EasyOCRextractexception: {e}")
+        logger.warning(f"EasyOCRextractexception: {e}")
     
     # method2: 尝试Tesseract OCR (备选)
     try:
@@ -172,7 +175,7 @@ def extract_text_with_ocr_traditional(pdf_path: str) -> str:
         from PIL import Image
         import io
         
-        print("使用Tesseract OCRextract文本...")
+        logger.info("使用Tesseract OCRextract文本...")
         
         doc = fitz.open(pdf_path)
         
@@ -191,16 +194,16 @@ def extract_text_with_ocr_traditional(pdf_path: str) -> str:
             text = pytesseract.image_to_string(image, lang='chi_sim+eng')
             if text.strip():
                 content += text + "\n"
-                print(f"Tesseractsuccessextract页面{page_num+1}文本")
+                logger.debug(f"Tesseractsuccessextract页面{page_num+1}文本")
         
         doc.close()
         return content
         
     except ImportError:
-        print("Tesseract OCR未安装，跳过OCRextract")
+        logger.debug("Tesseract OCR未安装，跳过OCRextract")
         return ""
     except Exception as e:
-        print(f"Tesseract OCRextractexception: {e}")
+        logger.warning(f"Tesseract OCRextractexception: {e}")
         return ""
     
     # method3: 尝试pdf2image + OCR
@@ -208,7 +211,7 @@ def extract_text_with_ocr_traditional(pdf_path: str) -> str:
         from pdf2image import convert_from_path
         import easyocr
         
-        print("使用pdf2image + EasyOCRextract文本...")
+        logger.info("使用pdf2image + EasyOCRextract文本...")
         
         # 将PDF转换为图像 (进一步降低DPI以提高speed)
         images = convert_from_path(pdf_path, dpi=150)
@@ -232,18 +235,18 @@ def extract_text_with_ocr_traditional(pdf_path: str) -> str:
             
             if page_text.strip():
                 content += page_text.strip() + "\n"
-                print(f"pdf2image+EasyOCRsuccessextract页面{i+1}文本: {len(page_text)}字符")
+                logger.debug(f"pdf2image+EasyOCRsuccessextract页面{i+1}文本: {len(page_text)}字符")
         
         return content
         
     except ImportError:
-        print("pdf2image未安装，跳过此method")
+        logger.debug("pdf2image未安装，跳过此method")
         return ""
     except Exception as e:
-        print(f"pdf2image+OCRextractexception: {e}")
+        logger.warning(f"pdf2image+OCRextractexception: {e}")
         return ""
     
-    print("所有OCRmethod都不可用，请安装相关库")
+    logger.warning("所有OCRmethod都不可用，请安装相关库")
     return ""
 
 
@@ -266,7 +269,7 @@ def extract_rcc_case_number(content: str, pdf_path: str = None) -> str:
         filename_match = re.search(r'RCC[#\s]*(\d+)', filename, re.IGNORECASE)
         if filename_match:
             case_number = filename_match.group(1)
-            print(f"✅ 从文件名extractRCC案件编号: {case_number}")
+            logger.info(f"✅ 从文件名extractRCC案件编号: {case_number}")
             return case_number
     
     # 如果file名中没有，则从PDF内容中extract
@@ -282,10 +285,10 @@ def extract_rcc_case_number(content: str, pdf_path: str = None) -> str:
         match = re.search(pattern, content, re.IGNORECASE)
         if match:
             case_number = match.group(1).strip()
-            print(f"✅ 从PDF内容extractRCC案件编号: {case_number}")
+            logger.info(f"✅ 从PDF内容extractRCC案件编号: {case_number}")
             return case_number
     
-    print("⚠️ 未找到RCC案件编号")
+    logger.warning("⚠️ 未找到RCC案件编号")
     return ""
 
 
@@ -338,7 +341,7 @@ def extract_date_from_content(content: str) -> str:
     ]
     date_str = ""
     for pattern in date_patterns:
-        print(f"content: {content}, pattern: {pattern}")
+        logger.debug(f"content: {content}, pattern: {pattern}")
         match = re.search(pattern, content, re.IGNORECASE)
         if match:
             date_str = match.group(1).strip()
@@ -444,7 +447,7 @@ def extract_slope_number(content: str) -> str:
     Returns:
         str: 清理后的斜坡编号
     """
-    print("🔍 RCC开始extract斜坡编号...")
+    logger.debug("🔍 RCC开始extract斜坡编号...")
     
     # 模式1: slope.no 后面的内容
     slope_no_patterns = [
@@ -458,7 +461,7 @@ def extract_slope_number(content: str) -> str:
         if match:
             slope_no = clean_slope_number_rcc(match.group(1))
             if slope_no:
-                print(f"✅ 从slope.noextract斜坡编号: {slope_no}")
+                logger.info(f"✅ 从slope.noextract斜坡编号: {slope_no}")
                 return slope_no
     
     # 模式2: Form 2 ref. no 后面的内容中extract
@@ -475,7 +478,7 @@ def extract_slope_number(content: str) -> str:
             slope_no = format_slope_number_rcc(extracted)
             
             if slope_no:
-                print(f"✅ 从Form 2 ref. noextract斜坡编号: {slope_no}")
+                logger.info(f"✅ 从Form 2 ref. noextract斜坡编号: {slope_no}")
                 return slope_no
     
     # 模式3: 斜坡编号 后面的内容
@@ -491,7 +494,7 @@ def extract_slope_number(content: str) -> str:
         if match:
             slope_no = clean_slope_number_rcc(match.group(1))
             if slope_no:
-                print(f"✅ 从斜坡编号extract: {slope_no}")
+                logger.info(f"✅ 从斜坡编号extract: {slope_no}")
                 return slope_no
     
     # 模式4: 通用斜坡编号格式match
@@ -506,10 +509,10 @@ def extract_slope_number(content: str) -> str:
         if match:
             slope_no = clean_slope_number_rcc(match.group(1))
             if slope_no:
-                print(f"✅ 从通用格式extract斜坡编号: {slope_no}")
+                logger.info(f"✅ 从通用格式extract斜坡编号: {slope_no}")
                 return slope_no
     
-    print("⚠️ RCC未找到斜坡编号")
+    logger.warning("⚠️ RCC未找到斜坡编号")
     return ""
 
 
@@ -703,11 +706,11 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
         return result
     
     # 备用方法：使用传统OCR提取
-    print("📄 使用传统OCR方法提取PDF内容...")
+    logger.info("📄 使用传统OCR方法提取PDF内容...")
     content = extract_content_with_multiple_methods(pdf_path)
     
     if not content:
-        print("warning: 无法从PDF文件中extracttext content，可能是扫描件或加密文件")
+        logger.warning("warning: 无法从PDF文件中extracttext content，可能是扫描件或加密文件")
         return _get_empty_result()
     
     # 初始化结果字典
@@ -719,8 +722,9 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
     result['A_date_received'] = format_date(A_date) if A_date else ""
 
     
-    # B: 来源（智能classify）
+    # B: 来源（根据处理类型直接分类）
     result['B_source'] = classify_source_smart(
+        processing_type='rcc',
         file_path=pdf_path, 
         content=content, 
         email_content=None, 
@@ -732,7 +736,7 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
     
     # D: 案件class型 (使用AIclassify)
     try:
-        print("🤖 RCC使用AIclassify案件class型...")
+        logger.info("🤖 RCC使用AIclassify案件class型...")
         case_data_for_ai = {
             'I_nature_of_request': result.get('I_nature_of_request', ''),
             'J_subject_matter': result.get('J_subject_matter', ''),
@@ -744,9 +748,9 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
         }
         ai_result = classify_case_type_ai(case_data_for_ai)
         result['D_type'] = ai_result.get('predicted_type', 'General')
-        print(f"✅ RCC AIclassify完成: {result['D_type']} (confidence: {ai_result.get('confidence', 0):.2f})")
+        logger.info(f"✅ RCC AIclassify完成: {result['D_type']} (confidence: {ai_result.get('confidence', 0):.2f})")
     except Exception as e:
-        print(f"⚠️ RCC AIclassifyfailed，使用传统method: {e}")
+        logger.warning(f"⚠️ RCC AIclassifyfailed，使用传统method: {e}")
         # 传统classifymethod作为备用
         if "urgent" in content.lower() or "紧急" in content:
             result['D_type'] = "Urgent"
@@ -770,18 +774,18 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
     
     # I: request性质摘要 (使用AI从PDF内容生成具体request摘要)
     try:
-        print("🤖 RCC使用AI生成请求摘要...")
+        logger.info("🤖 RCC使用AI生成请求摘要...")
         ai_summary = generate_ai_request_summary(content, None, 'pdf')
         result['I_nature_of_request'] = ai_summary
-        print(f"✅ RCC AI请求摘要生成success: {ai_summary}")
+        logger.info(f"✅ RCC AI请求摘要生成success: {ai_summary}")
     except Exception as e:
-        print(f"⚠️ RCC AI摘要生成failed，使用备用method: {e}")
+        logger.warning(f"⚠️ RCC AI摘要生成failed，使用备用method: {e}")
         # 备用method：使用原有的request性质extract
         result['I_nature_of_request'] = extract_nature_of_request(content)
     
     # J: 事项主题 (使用AIclassify器)
     try:
-        print("🤖 RCC使用AIclassify主题...")
+        logger.info("🤖 RCC使用AIclassify主题...")
         subject_data_for_ai = {
             'I_nature_of_request': result.get('I_nature_of_request', ''),
             'J_subject_matter': "RCC案件process",
@@ -790,9 +794,9 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
         }
         ai_subject_result = classify_subject_matter_ai(subject_data_for_ai)
         result['J_subject_matter'] = ai_subject_result.get('predicted_category', 'Others')
-        print(f"✅ RCC主题classify完成: {result['J_subject_matter']} (confidence: {ai_subject_result.get('confidence', 0):.2f})")
+        logger.info(f"✅ RCC主题classify完成: {result['J_subject_matter']} (confidence: {ai_subject_result.get('confidence', 0):.2f})")
     except Exception as e:
-        print(f"⚠️ RCC主题classifyfailed，使用默认: {e}")
+        logger.warning(f"⚠️ RCC主题classifyfailed，使用默认: {e}")
         result['J_subject_matter'] = "Others"
     
     # K: 10天规则截止日期 (A+10天)
@@ -818,7 +822,7 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
     try:
         with pdfplumber.open(pdf_path) as pdf:
             result['P_fax_pages'] = str(len(pdf.pages))
-    except:
+    except Exception as e:
         result['P_fax_pages'] = ""
     
     # Q: 案件详情
