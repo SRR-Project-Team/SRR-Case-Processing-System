@@ -65,7 +65,7 @@ gcloud iam service-accounts keys create github-actions-key.json \
 
 | Secret 名称 | 说明 | 示例值 |
 |------------|------|--------|
-| `GCP_PROJECT_ID` | GCP 项目 ID | `srr-project-demo` |
+| `GCP_PROJECT_ID` | GCP 项目 ID | `srr-demo` |
 | `GCP_SA_KEY` | 服务账户密钥 JSON（完整内容） | `{"type":"service_account",...}` |
 
 **获取 GCP_SA_KEY：**
