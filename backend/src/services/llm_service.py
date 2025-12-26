@@ -518,6 +518,11 @@ class LLMService:
   "P_fax_pages": "传真页数 (Fax Pages)",
   "Q_case_details": "案件详情 (Case Details/Follow-up Actions)"
 }}
+特殊规则:
+1. 如果来源(B)是TMO: E姓名格式为 "{{Name}} of TMO (DEVB)", F联系方式为 "TMO (DEVB)"
+2. 如果来源(B)是1823: 从联系信息中提取姓名和电话/邮箱
+3. 如果来源(B)是RCC: 从传真文件中提取信息
+4. 如果投诉人匿名,E和F填"NA"
 
 Extract all visible information from the document. If a field is not found, use empty string. For dates, use the specified format."""
             
@@ -640,6 +645,9 @@ Extract all information from the text content. Look for patterns like:
 - Case Creation Date : YYYY-MM-DD HH:MM:SS
 - Channel : [source]
 - 1823 case: [number]
+- For ICC, enter {Last name} from contact information E_caller_name 
+and enter ” {Mobile} / {Email Address}” in Contact No. 
+Enter “NA” for (E) & (F) when the complainant is anonymous.
 - Subject Matter : [subject]
 - Transaction Time: [time]
 - File upload: [count] file
