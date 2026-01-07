@@ -521,6 +521,21 @@ class LLMService:
 special regulations:
 1. If source (B) is TMO: The name format of E is "{{Name}} of TMO (DEVB)". The contact information is "TMO (DEVB)"
 
+2. If B_source is RCC: Ensure that the complete name field preceding the Contact Tel No. is retrieved, which consists of words starting with two or three uppercase letters.
+3. If B_source is RCC: The content to be filled in the field of J_subject_matter shall be handled in accordance with the following rules, 
+                       which is determined by the content of I_nature_of_request to correspond to the relevant type.
+                       1). Hazardous Tree : The caller reported tree health issues (such as pest infestation, decay, aging, etc.)
+                       2). Tree Trimming / Pruning : The caller reported issues such as the need for tree pruning.
+                       3). Fallen Tree : The caller reported issues of trees becoming loose or toppling over.
+                       4). Grass Cutting : The caller reported issues such as overgrown grass or the need for grass cutting.
+                       5). Surface Erosion : The caller reported issues such as loosening of the ramp surface or corrosion damage to the ramp surface.
+                       6). Others : The caller reported other circumstances not falling into the above-mentioned categories (such as hazards caused by beehives, the need for work suspension, etc.)
+                       If the report in I meets multiple conditions, use an ampersand (&) to connect them.
+4. If B_source is RCC: Strictly fill in the exact value "N/A" (without any extra words, punctuation, or supplementary content) in both the {{L_icc_interim_due}} and {{M_icc_final_due}} fields. 
+                       Do NOT leave these fields blank, and do NOT add any other text.
+
+
+
 Extract all visible information from the document. If a field is not found, use empty string. For dates, use the specified format."""
             
             # Call OpenAI Vision API
