@@ -519,6 +519,29 @@ class LLMService:
   "Q_case_details": "案件详情 (Case Details/Follow-up Actions)"
 }}
 
+Determine `D_type` based on the following criteria and return one of: `Emergency`, `Urgent`, or `General`.
+Primary Criteria
+Emergency: Immediate threat to human life or property
+  (e.g., building collapse, trees fallen onto buildings or roads).
+Urgent: Potential safety risk
+  (e.g., hazardous trees, slope cracks ≥ 5 cm, blocked main drainage causing water accumulation).
+General: No safety risk
+  (e.g., grass cutting, scattered debris).
+Adjustment Rules
+Cases located in high-risk areas*(hospitals, schools, major roads) should generally be escalated by one level (e.g., General → Urgent).
+Cases in low-risk areas*(e.g., remote or unused slopes) may be downgraded by one level (e.g., Urgent → General).
+During typhoon or heavy rain seasons, prioritize classifying cases as Emergency*when risk indicators are present.
+
+Extract all information from the text content. Look for patterns like:
+- Case Creation Date : YYYY-MM-DD HH:MM:SS
+- Channel : [source]
+- 1823 case: [number]
+- Subject Matter : [subject]
+- Transaction Time: [time]
+- File upload: [count] file
+- Contact information, slope numbers, locations, etc.
+
+
 Extract all visible information from the document. If a field is not found, use empty string. For dates, use the specified format."""
             
             # Call OpenAI Vision API
@@ -635,6 +658,19 @@ Extract all visible information from the document. If a field is not found, use 
   "P_fax_pages": "传真页数 (File upload count, e.g., '1 + 2' if 2 files uploaded)",
   "Q_case_details": "案件详情 (Case Details, including nature of request)"
 }
+
+Determine `D_type` based on the following criteria and return one of: `Emergency`, `Urgent`, or `General`.
+Primary Criteria
+Emergency: Immediate threat to human life or property
+  (e.g., building collapse, trees fallen onto buildings or roads).
+Urgent: Potential safety risk
+  (e.g., hazardous trees, slope cracks ≥ 5 cm, blocked main drainage causing water accumulation).
+General: No safety risk
+  (e.g., grass cutting, scattered debris).
+Adjustment Rules
+Cases located in high-risk areas*(hospitals, schools, major roads) should generally be escalated by one level (e.g., General → Urgent).
+Cases in low-risk areas*(e.g., remote or unused slopes) may be downgraded by one level (e.g., Urgent → General).
+During typhoon or heavy rain seasons, prioritize classifying cases as Emergency*when risk indicators are present.
 
 Extract all information from the text content. Look for patterns like:
 - Case Creation Date : YYYY-MM-DD HH:MM:SS
