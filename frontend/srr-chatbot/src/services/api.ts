@@ -6,11 +6,14 @@ export interface BatchProcessingResponse {
   total_files: number;
   successful: number;
   failed: number;
+  skipped: number;  // 添加此字段
   results: Array<{
-    filename: string;
-    status: 'success' | 'error';
+    case_id: string;
+    main_file: string;
+    email_file?: string | null;
+    status: 'success' | 'error' | 'skipped';  // 添加 'skipped'
     message: string;
-    structured_data?: any;
+    structured_data?: any;  // 仅在 success 时存在
   }>;
 }
 
