@@ -672,7 +672,11 @@ Extract all visible information from the document. If a field is not found, use 
   "Q_case_details": "案件详情 (Case Details, including nature of request)"
 }
 
-Determine `D_type` based on the following criteria and return one of: `Emergency`, `Urgent`, or `General`.
+special regulations:
+1.The A_date_received field must always be populated with the [Date/Time] value from the row in the assignment history 
+table where [Status] = 'OPEN' and [Dept] = 'ASD'.
+
+2.Determine `D_type` based on the following criteria and return one of: `Emergency`, `Urgent`, or `General`.
 Primary Criteria
 Emergency: Immediate threat to human life or property
   (e.g., building collapse, trees fallen onto buildings or roads).
@@ -684,6 +688,19 @@ Adjustment Rules
 Cases located in high-risk areas*(hospitals, schools, major roads) should generally be escalated by one level (e.g., General → Urgent).
 Cases in low-risk areas*(e.g., remote or unused slopes) may be downgraded by one level (e.g., Urgent → General).
 During typhoon or heavy rain seasons, prioritize classifying cases as Emergency*when risk indicators are present.
+
+3.The content to be filled in the field of J_subject_matter shall be handled in accordance with the following rules, 
+which is determined by the content of I_nature_of_request to correspond to the relevant type.
+1). Hazardous Tree : The caller reported tree health issues (such as pest infestation, decay, aging, etc.)
+2). Tree Trimming / Pruning : The caller reported issues such as the need for tree pruning.
+3). Fallen Tree : The caller reported issues of trees becoming loose or toppling over.
+4). Grass Cutting : The caller reported issues such as overgrown grass or the need for grass cutting.
+5). Surface Erosion : The caller reported issues such as loosening of the ramp surface or corrosion damage to the ramp surface.
+6). Others : The caller reported other circumstances not falling into the above-mentioned categories (such as hazards caused by beehives, the need for work suspension, etc.)
+If the report in I meets multiple conditions, use an ampersand (&) to connect them.
+
+4.The L_icc_interim_due and M_icc_final_due field must always be populated with the [Interim Reply] and [Final Reply] date value from the row in the 'I. DUE DATE:'
+section of the case file.
 
 Extract all information from the text content. Look for patterns like:
 - Case Creation Date : YYYY-MM-DD HH:MM:SS
