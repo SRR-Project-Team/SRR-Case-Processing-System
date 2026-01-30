@@ -623,6 +623,61 @@ Extract all visible information from the document. If a field is not found, use 
             self.logger.error(f"Full traceback:\n{traceback.format_exc()}")
             return None
 
+    def chat(self, query: str, context: str, raw_content: str, his_context: str) -> Optional[str]:
+        try:
+            if not self.api_key or not self.client:
+                self.logger.warning("⚠️ API key not set or client not initialized, cannot use OpenAI API")
+                return None
+            
+            # Build prompt for chat
+            prompt = f"""Answer the following question based on the provided context: 
+            Fabrication is prohibited.
+            User Question: {query}
+            Extracted structured data: {context}
+            Raw Content: {raw_content}
+            History Context: {his_context}
+            Requirements for the answer: concise, accurate, and in line with actual processing procedures.
+            """
+            
+            # Call OpenAI API
+            self.logger.info("🔄 Calling OpenAI API for chat...")
+            
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",  # Use gpt-4o-mini for chat (cost-effective)
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a helpful assistant that can answer questions based on the provided context."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                max_tokens=2000,
+                temperature=0.1  # Low temperature for accurate extraction
+            )
+            
+            # Extract response content
+            if response and response.choices and len(response.choices) > 0:
+                content = response.choices[0].message.content
+                if content and content.strip():
+                    return content.strip()
+                else:
+                    self.logger.warning("⚠️ Chat API response is empty or invalid")
+                    return None
+            
+            self.logger.warning("⚠️ Chat API response is empty or invalid")
+            return None
+            
+        except Exception as e:
+            error_type = type(e).__name__
+            error_msg = str(e)
+            self.logger.error(f"❌ Chat failed: {error_type} - {error_msg}")
+            import traceback
+            self.logger.error(f"Full traceback:\n{traceback.format_exc()}")
+            return None
+
     def extract_fields_from_text(self, text_content: str, email_content: str = None) -> Optional[Dict[str, Any]]:
         """
         Use OpenAI API to extract A-Q fields from TXT content

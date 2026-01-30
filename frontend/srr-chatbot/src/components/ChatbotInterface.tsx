@@ -64,7 +64,11 @@ const ChatbotInterface: React.FC = () => {
     if (files.length === 0) return;
 
     // Validate file types and sizes
-    const allowedTypes = ['text/plain', 'application/pdf'];
+    const allowedTypes = ['text/plain', 
+                          'application/pdf',
+                          'application/vnd.ms-excel', // .xls
+                          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' // .xlsx
+                         ];
     const maxSize = 10 * 1024 * 1024; // 10MB limit
     
     const invalidFiles = files.filter(file => 
@@ -82,7 +86,7 @@ const ChatbotInterface: React.FC = () => {
         return `${file.name}: Unknown error`;
       }).join('\n');
       
-      addMessage('bot', `The following files cannot be processed:\n${errorMsg}\n\nOnly TXT and PDF files are supported, with a maximum file size of 10MB.`);
+      addMessage('bot', `The following files cannot be processed:\n${errorMsg}\n\nOnly TXT, PDF, XLS, and XLSX files are supported, with a maximum file size of 10MB.`);
       
       // Filter out invalid files
       const validFiles = files.filter(file => 
@@ -182,6 +186,7 @@ const ChatbotInterface: React.FC = () => {
             ...prev,
             isLoading: false,
             extractedData: result.data!,
+            rawFileContent: result.raw_content,
           }));
 
           // Display extracted case data in chat
@@ -452,6 +457,7 @@ const ChatbotInterface: React.FC = () => {
       const response = await queryCase({
         query: userQuery,
         context: chatState.extractedData || undefined,
+        raw_content: chatState.rawFileContent || undefined,
       });
 
       setChatState(prev => ({ ...prev, isLoading: false }));

@@ -30,3 +30,18 @@ OPENAI_USE_PROXY = os.getenv("OPENAI_USE_PROXY", "true").lower() == "true"  # En
 # Default to OpenAI API
 LLM_API_KEY = OPENAI_API_KEY
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")  # "openai"
+
+# SurrealDB Configuration
+SURREALDB_URL = "ws://127.0.0.1:8000/rpc"  # SurrealDB本地地址
+SURREALDB_NAMESPACE = "tree_case"          # 树木case专属命名空间
+SURREALDB_DATABASE = "tree_case_db"        # 树木case专属数据库
+SURREALDB_USER = "root"                    # 默认账号
+SURREALDB_PASS = "root"                    # 默认密码
+# backend directory absolute path
+BACKEND_DIR = Path(__file__).resolve().parent.parent  # backend/
+SURREALDB_PERSIST_PATH = str(BACKEND_DIR / "tree_case_surrealdb")
+
+# Embedding Configuration
+EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "ollama")  # "openai" or "ollama"
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")  # 推荐的 embedding 模型

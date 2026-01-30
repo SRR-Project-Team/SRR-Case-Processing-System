@@ -41,7 +41,8 @@ export const processFile = async (file: File): Promise<ApiResponse> => {
       message: backendResponse.message,
       data: backendResponse.structured_data, // Map structured_data to data
       error: backendResponse.error,
-      summary: backendResponse.summary
+      summary: backendResponse.summary,
+      raw_content: backendResponse.raw_content // Include original file content for chat
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -87,43 +88,69 @@ export const queryCase = async (request: QueryRequest): Promise<string> => {
   try {
     // Here you can implement actual query logic
     // Currently returns simulated response
-    const { query, context } = request;
+    // context: extracted data raw_content: raw content of the file
+    const { query, context, raw_content } = request;
     
-    if (!context) {
-      return 'Please upload files first to get case information.';
+    // Allow chat even without uploaded files - backend can handle general queries
+    // and retrieve information from historical database
+    const response = await axios.post(`${API_BASE_URL}/api/chat`, {
+      query,
+      context: context || {},
+      raw_content: raw_content || ''
+    }, {
+      timeout: 30000 // 30 seconds timeout
+    });
+
+    // Ensure we always return a string (handle edge cases)
+    const data = response.data;
+    
+    // If backend returns an object (shouldn't happen now, but handle gracefully)
+    if (typeof data === 'object' && data !== null) {
+      if ('message' in data) {
+        return String(data.message);
+      }
+      return JSON.stringify(data);
     }
+    
+    // If data is null or undefined
+    if (!data) {
+      return 'No response received from the server.';
+    }
+    
+    // Normal case: return as string
+    return String(data);
 
     // Simple query matching logic
-    const lowerQuery = query.toLowerCase();
+    // const lowerQuery = query.toLowerCase();
     
-    if (lowerQuery.includes('case')) {
-      return `Case Number: ${context.C_case_number || 'Unknown'}\nSource: ${context.B_source || 'Unknown'}`;
-    }
+    // if (lowerQuery.includes('case')) {
+    //   return `Case Number: ${context.C_case_number || 'Unknown'}\nSource: ${context.B_source || 'Unknown'}`;
+    // }
     
-    if (lowerQuery.includes('date')) {
-      return `Date Received: ${context.A_date_received || 'Unknown'}\n10-Day Rule Due Date: ${context.K_10day_rule_due_date || 'Unknown'}`;
-    }
+    // if (lowerQuery.includes('date')) {
+    //   return `Date Received: ${context.A_date_received || 'Unknown'}\n10-Day Rule Due Date: ${context.K_10day_rule_due_date || 'Unknown'}`;
+    // }
     
-    if (lowerQuery.includes('contact')) {
-      return `Caller: ${context.E_caller_name || 'Unknown'}\nContact Number: ${context.F_contact_no || 'Unknown'}`;
-    }
+    // if (lowerQuery.includes('contact')) {
+    //   return `Caller: ${context.E_caller_name || 'Unknown'}\nContact Number: ${context.F_contact_no || 'Unknown'}`;
+    // }
     
-    if (lowerQuery.includes('slope')) {
-      return `Slope Number: ${context.G_slope_no || 'Unknown'}\nLocation: ${context.H_location || 'Unknown'}`;
-    }
+    // if (lowerQuery.includes('slope')) {
+    //   return `Slope Number: ${context.G_slope_no || 'Unknown'}\nLocation: ${context.H_location || 'Unknown'}`;
+    // }
     
-    if (lowerQuery.includes('nature')) {
-      return `Nature of Request: ${context.I_nature_of_request || 'Unknown'}`;
-    }
+    // if (lowerQuery.includes('nature')) {
+    //   return `Nature of Request: ${context.I_nature_of_request || 'Unknown'}`;
+    // }
     
     // Default return case summary
-    return `Case Summary:
-• Case Number: ${context.C_case_number || 'Unknown'}
-• Source: ${context.B_source || 'Unknown'}
-• Date Received: ${context.A_date_received || 'Unknown'}
-• Caller: ${context.E_caller_name || 'Unknown'}
-• Slope Number: ${context.G_slope_no || 'Unknown'}
-• Nature of Request: ${context.I_nature_of_request || 'Unknown'}`;
+//     return `Case Summary:
+// • Case Number: ${context.C_case_number || 'Unknown'}
+// • Source: ${context.B_source || 'Unknown'}
+// • Date Received: ${context.A_date_received || 'Unknown'}
+// • Caller: ${context.E_caller_name || 'Unknown'}
+// • Slope Number: ${context.G_slope_no || 'Unknown'}
+// • Nature of Request: ${context.I_nature_of_request || 'Unknown'}`;
     
   } catch (error) {
     throw new Error('Query failed, please try again later');

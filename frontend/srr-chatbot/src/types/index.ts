@@ -54,6 +54,7 @@ export interface ApiResponse {
   data?: ExtractedData;
   error?: string;
   summary?: FileSummary;  // Added summary field
+  raw_content?: string; // raw content of the file
 }
 
 // Chat state
@@ -61,11 +62,13 @@ export interface ChatState {
   messages: Message[];
   isLoading: boolean;
   extractedData: ExtractedData | null;
-  currentFile: FileInfo | null;
+  currentFile: FileInfo | null; // metadata
+  rawFileContent?: string;
 }
 
 // Query types
 export interface QueryRequest {
   query: string;
   context?: ExtractedData;
+  raw_content?: string;
 }

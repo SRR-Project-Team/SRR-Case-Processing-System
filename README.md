@@ -162,17 +162,6 @@ python start.py cleanup
 python start.py check
 ```
 
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### How to Contribute
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
 ## 📞 Support
 
 For questions or issues:
@@ -191,9 +180,19 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - OCR capabilities using EasyOCR and Tesseract
 - Document processing with PyMuPDF and pdfplumber
 
+# Contributors
+Thank you to all contributors who have devoted their efforts to this project. This document records the specific contributions of each participant.
+
+Iteration 1: Version v1.0.0
+| Username | GitHub ID | Responsible Modules | Specific Contributions |
+| -------- | --------- | ------------------- | ---------------------- |
+| Zhang Weijian | February13 | ICC |  |
+| Hou Haochen | HHC-1998 | RCC |  |
+| Luo Kairong | jsildf | TMO |  |
+
+
 ---
 
-**Last Updated**: 2025-10-19  
+**Last Updated**: 2026-01-30  
 **Version**: 2.0
 
-**🎉 Ready to process your first case? Run `python start.py` and visit http://localhost:3000**

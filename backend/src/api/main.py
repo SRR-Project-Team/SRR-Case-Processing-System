@@ -28,6 +28,34 @@ import tempfile
 import time
 import traceback
 import logging
+from pydantic import BaseModel
+
+# Calculate backend directory path (used for .env file and module imports)
+# From main.py (backend/src/api/main.py), we need to go up 3 levels:
+#   1st dirname: backend/src/api/main.py -> backend/src/api
+#   2nd dirname: backend/src/api -> backend/src  
+#   3rd dirname: backend/src -> backend
+backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Import custom modules
+# Set Python path to import project modules
+import sys
+import os
+# Add backend/src to path for importing core modules (core, utils, services, database)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add backend directory to path for importing config module
+sys.path.append(backend_dir)
+
+
+
+from src.services.text_splitter import split_text
+from src.core.embedding import embed_text
+from src.core.vector_store import SurrealDBSyncClient
+
+class ChatRequest(BaseModel):
+    query: str
+    context: dict
+    raw_content: str
 
 # Configure logging for debug visibility
 # Set logging level based on environment variable, default to INFO for production
@@ -46,12 +74,6 @@ else:
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
-# Calculate backend directory path (used for .env file and module imports)
-# From main.py (backend/src/api/main.py), we need to go up 3 levels:
-#   1st dirname: backend/src/api/main.py -> backend/src/api
-#   2nd dirname: backend/src/api -> backend/src  
-#   3rd dirname: backend/src -> backend
-backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Load environment variables from .env file (for local development)
 # IMPORTANT: This must be done BEFORE importing config.settings
@@ -78,14 +100,6 @@ except ImportError:
     print("ℹ️  python-dotenv not installed, using system environment variables only")
     print("   Install with: pip install python-dotenv")
 
-# Import custom modules
-# Set Python path to import project modules
-import sys
-import os
-# Add backend/src to path for importing core modules (core, utils, services, database)
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# Add backend directory to path for importing config module
-sys.path.append(backend_dir)
 
 # Import core processing modules
 from core.extractFromTxt import extract_case_data_from_txt  # TXT file processor
@@ -100,7 +114,7 @@ from core.output import (  # Output formatting module
     ProcessingResult
 )
 from utils.smart_file_pairing import SmartFilePairing  # Smart file pairing utility
-from utils.file_utils import read_file_with_encoding,extract_text_from_pdf_fast,extract_content_with_multiple_methods
+from utils.file_utils import read_file_with_encoding,extract_text_from_pdf_fast,extract_content_with_multiple_methods,process_excel
 
 # Set database module path
 import sys
@@ -115,7 +129,7 @@ db_manager = get_db_manager()
 
 # Import LLM service
 from services.llm_service import get_llm_service
-from config.settings import LLM_API_KEY
+from config.settings import LLM_API_KEY, SURREALDB_PERSIST_PATH
 
 # Log API key status at module load time
 if LLM_API_KEY:
@@ -275,7 +289,9 @@ def determine_file_processing_type(filename: str, content_type: str) -> str:
         str: Processing type ("txt", "tmo", "rcc", "unknown")
     """
     # Check file extension
-    if filename.lower().endswith('.txt'):
+    if filename.lower().endswith('.xls') or filename.lower().endswith('.xlsx'):
+        return "xls"
+    elif filename.lower().endswith('.txt'):
         return "txt"
     elif filename.lower().endswith('.pdf'):
         # Determine PDF type based on filename prefix
@@ -291,7 +307,7 @@ def determine_file_processing_type(filename: str, content_type: str) -> str:
 
 def validate_file_type_extended(content_type: str, filename: str) -> bool:
     """
-    Extended file type validation, supports TXT and PDF files
+    Extended file type validation, supports TXT, PDF, and Excel files
     
     Args:
         content_type (str): File MIME type
@@ -301,7 +317,12 @@ def validate_file_type_extended(content_type: str, filename: str) -> bool:
         bool: Whether it's a supported file type
     """
     # Supported file types
-    supported_types = ["text/plain", "application/pdf"]
+    supported_types = [
+        "text/plain", 
+        "application/pdf",
+        "application/vnd.ms-excel",  # .xls
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"  # .xlsx
+    ]
     return content_type in supported_types
 
 
@@ -312,7 +333,7 @@ def get_file_type_error_message_extended() -> str:
     Returns:
         str: File type error information
     """
-    return "Only TXT and PDF file formats are supported"
+    return "Only TXT, PDF, XLS, and XLSX file formats are supported"
 
 
 async def process_paired_txt_file(main_file_path: str, email_file_path: str = None) -> dict:
@@ -523,7 +544,24 @@ async def process_srr_file(file: UploadFile = File(...)):
         extract_start = time.time()
         print(f"🔄 Starting data extraction, processing type: {processing_type}")
         
-        if processing_type == "txt":
+
+        if processing_type == "xls":
+            content = process_excel(file_path)
+
+            # split content into text chunks
+            text_chunks = split_text(content)
+            logging.info(f"Split {len(text_chunks)} text chunks from Excel file")
+
+            # generate embeddings
+            embeddings = [embed_text(text_chunk) for text_chunk in text_chunks]
+
+            # add vectors to surrealdb
+            surreal_client = SurrealDBSyncClient(SURREALDB_PERSIST_PATH)
+            surreal_client.add_vectors_sync(text_chunks, embeddings)
+
+            return create_success_result(file.filename, structured_data=None, summary=None, raw_content=content)
+
+        elif processing_type == "txt":
             # Process TXT file (using intelligent encoding detection)
             content = read_file_with_encoding(file_path)
             extracted_data = extract_case_data_from_txt(file_path)
@@ -604,8 +642,7 @@ async def process_srr_file(file: UploadFile = File(...)):
         # Return success result
         total_time = time.time() - start_time
         print(f"🎉 File processing completed: {file.filename}, total time: {total_time:.2f} seconds")
-        return create_success_result(file.filename, structured_data, summary_result)
-        
+        return create_success_result(file.filename, structured_data, summary_result, content)
         
     except Exception as e:
         # Catch all exceptions and return error result
@@ -915,6 +952,61 @@ async def find_similar_cases(case_data: dict):
             "message": f"Failed to find similar cases: {str(e)}"
         }
 
+
+@app.post("/api/chat")
+async def chatClient(Request: ChatRequest):
+    """
+    Chat with the case management system
+    
+    Returns:
+        str: Chat response message (always returns a string for frontend compatibility)
+    """
+    try:
+        import json
+        
+        his_context = ""
+        
+        # Try to get similar cases from vector store (optional - don't fail if unavailable)
+        try:
+            from src.core.vector_store import SurrealDBSyncClient
+            surreal_client = SurrealDBSyncClient(SURREALDB_PERSIST_PATH)
+            
+            # Build search query - works with or without raw_content
+            if Request.raw_content:
+                search_query = f"Query: {Request.query}\nRaw Content: {Request.raw_content}"
+            else:
+                search_query = f"Query: {Request.query}"
+            
+            similar_cases = await surreal_client.retrieve_similar_sync(search_query, 10)
+            his_context = "\n".join([case["content"] for case in similar_cases if case["similarity"] > 0.5])
+            print(f"✅ Found {len(similar_cases)} similar cases from vector store", flush=True)
+        except Exception as vector_error:
+            # Vector search failed, continue without historical context
+            print(f"⚠️ Vector search unavailable (embedding/SurrealDB issue): {str(vector_error)}", flush=True)
+            print("   Continuing chat without historical context...", flush=True)
+            his_context = ""
+        
+        # Convert context dict to JSON string for LLM
+        context_str = json.dumps(Request.context) if Request.context else "{}"
+        raw_content_str = Request.raw_content if Request.raw_content else ""
+        
+        # chat with llm
+        llm_service = get_llm_service()
+        response = llm_service.chat(Request.query, context_str, raw_content_str, his_context)
+        
+        # Ensure we always return a string (never None or object)
+        if response:
+            return response
+        else:
+            return "I apologize, but I'm unable to generate a response at the moment. Please try again or upload a file for more specific assistance."
+            
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        # Return error message as a string (not an object) for frontend compatibility
+        error_msg = f"I encountered an error while processing your request: {str(e)}"
+        print(f"❌ Chat error: {error_msg}", flush=True)
+        return error_msg
 
 @app.get("/api/case-statistics")
 async def get_case_statistics(

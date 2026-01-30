@@ -87,7 +87,7 @@ class ProcessingResult(BaseModel):
     message: str
     structured_data: Optional[StructuredCaseData] = None
     summary: Optional[Dict[str, Any]] = None
-
+    raw_content: Optional[str] = None
 
 def create_structured_data(extracted_data: Dict[str, Any]) -> StructuredCaseData:
     """
@@ -130,7 +130,11 @@ def create_structured_data(extracted_data: Dict[str, Any]) -> StructuredCaseData
     )
 
 
-def create_success_result(filename: str, structured_data: StructuredCaseData, summary: Optional[Dict[str, Any]] = None) -> ProcessingResult:
+def create_success_result(filename: str, 
+                          structured_data: StructuredCaseData, 
+                          summary: Optional[Dict[str, Any]] = None,
+                          raw_content: Optional[str] = None
+                         ) -> ProcessingResult:
     """
     创建successprocess的resultobject
     
@@ -155,7 +159,8 @@ def create_success_result(filename: str, structured_data: StructuredCaseData, su
         status="success",
         message="SRR案件processsuccess",
         structured_data=structured_data,
-        summary=summary
+        summary=summary,
+        raw_content=raw_content
     )
 
 

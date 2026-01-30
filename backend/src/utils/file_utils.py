@@ -28,6 +28,7 @@ from typing import Optional
 
 import pdfplumber
 import PyPDF2
+import pandas as pd
 
 
 def detect_file_encoding(file_path: str) -> str:
@@ -527,6 +528,27 @@ def extract_case_data_from_pdf_with_llm(pdf_path: str, file_type: str,
     
     # 如果Vision API失败，返回空结果（调用者会使用备用方法）
     return None
+
+def process_excel(excel_path: str) -> str:
+    """
+    Process Excel file for historical case RAG
+    """
+    try:
+        excel_file = pd.ExcelFile(excel_path)
+        content = ""
+        for sheet_name in excel_file.sheet_names:
+            df = pd.read_excel(excel_path,sheet_name=sheet_name).fillna("") 
+            content += f"=== Sheet: {sheet_name} ===\n"
+            # concat by row, a case for each row
+            for index, row in df.iterrows():
+                row_content = f"Case {index+1}: \n"
+                for col in df.columns:
+                    row_content += f"{col}: {row[col]}\n"
+                content += row_content+"\n"
+        return content
+    except Exception as e:
+        raise Exception(f"Failed to process Excel file: {e}")
+
 
 
 def _get_empty_pdf_result() -> dict:
