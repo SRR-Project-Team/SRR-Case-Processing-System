@@ -243,7 +243,32 @@ def extract_slope_no_from_form_ref(content: str) -> str:
         str: extract并清理后的斜坡编号
     """
     logger.debug("🔍 TMO开始extract斜坡编号...")
-    
+    # 模式4: 11SW-B/F199(0)
+    slope_patterns = [
+        r'\b(\d+[A-Z]+-[A-Z]+/[A-Z]+\d+(?:\(\d+\))?)\b'  # # 11SW-B/F199(0) 11SW-B/F199匹配带不带括号的版本
+    ]
+
+    all_slope_numbers = []
+
+    for pattern in slope_patterns:
+        # 使用findall查找所有匹配
+        matches = re.findall(pattern, content, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                slope_no = clean_slope_number_tmo(match)
+                if slope_no:
+                    # 去重，避免重复添加相同的编号
+                    if slope_no not in all_slope_numbers:
+                        all_slope_numbers.append(slope_no)
+
+    if len(all_slope_numbers) == 1:
+        print(f"✅ 从slope.noextract斜坡编号: {all_slope_numbers[0]}")
+        return all_slope_numbers[0]
+    # 多个编号用 & 连接
+    elif len(all_slope_numbers) > 1:
+        result = " & ".join(all_slope_numbers)
+        print(f"✅ 从slope.noextract斜坡编号: {result}")
+        return result
     # 模式1: slope.no 后面的内容
     slope_patterns = [
         r'slope\.?\s*no\.?\s*[:\s]+([A-Z0-9\-/#\s]+)',  # slope.no: 11SW-B/F199
@@ -422,7 +447,19 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
         get_location_from_slope_no_func=get_location_from_slope_no
     )
     
-    # 如果通用函数返回结果，直接返回
+    print("📄 使用传统OCR方法提取PDF内容...")
+  
+    content = extract_text_from_pdf_fast(pdf_path)
+
+    # G: 斜坡编号 (从Form 2 ref. no.中extract并转换格式)
+    # 从Form 2 ref. no.中extract斜坡编号
+    # 例如：11SWB/F199 -> 11SW-B/F199
+    result['G_slope_no'] = extract_slope_no_from_form_ref(content)
+    if not content:
+        print("⚠️ 无法extractPDFtext content")
+        return _get_empty_result()
+    
+    # 处理完slope_no返回
     if result:
         return result
     
