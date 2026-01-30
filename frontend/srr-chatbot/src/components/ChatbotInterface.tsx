@@ -336,9 +336,8 @@ const ChatbotInterface: React.FC = () => {
       addMessage('user', `Batch upload ${files.length} files: ${fileNames}`);
       
       addMessage('bot', `Processing ${files.length} files in batch, please wait...
-      
-${files.some(f => f.name.toLowerCase().startsWith('rcc')) ? 
-  '⚠️ RCC files detected, OCR processing may take longer time.' : ''}`);
+      ${files.some(f => f.name.toLowerCase().startsWith('rcc')) ? 
+      '⚠️ RCC files detected, OCR processing may take longer time.' : ''}`);
 
       setChatState(prev => ({
         ...prev,
@@ -354,31 +353,61 @@ ${files.some(f => f.name.toLowerCase().startsWith('rcc')) ?
           isLoading: false,
         }));
 
-        // Display batch processing results
+        // Display batch processing results - 显示所有文件的结果，包括跳过的
         const successFiles = result.results.filter(r => r.status === 'success');
         const failedFiles = result.results.filter(r => r.status === 'error');
+        const skippedFiles = result.results.filter(r => r.status === 'skipped');  // 新增
         
         let resultMessage = `📊 Batch processing completed!
-        
+
 📈 Processing Statistics:
 • Total files: ${result.total_files}
 • Successfully processed: ${result.successful}
-• Processing failed: ${result.failed}`;
+• Processing failed: ${result.failed}
+• Skipped files: ${result.skipped}`;  // 添加跳过统计
 
+        // 显示成功文件（包含详细信息）
         if (successFiles.length > 0) {
-          resultMessage += `\n\n✅ Successfully processed files:
-${successFiles.map(f => `• ${f.filename}`).join('\n')}`;
+          resultMessage += `\n\n✅ Successfully processed files (${successFiles.length}):`;
+          successFiles.forEach((f, index) => {
+            resultMessage += `\n\n${index + 1}. ${f.main_file}`;
+            if (f.email_file) {
+              resultMessage += ` (paired with ${f.email_file})`;
+            }
+            resultMessage += `\n   Case ID: ${f.case_id || 'N/A'}`;
+            resultMessage += `\n   Status: ${f.message}`;
+            if (f.structured_data) {
+              resultMessage += `\n   📋 Extracted: Date=${f.structured_data.A_date_received || 'N/A'}, Case=${f.structured_data.C_case_number || 'N/A'}, Location=${f.structured_data.H_location || 'N/A'}`;
+            }
+          });
         }
 
+        // 显示失败文件
         if (failedFiles.length > 0) {
-          resultMessage += `\n\n❌ Failed to process files:
-${failedFiles.map(f => `• ${f.filename}: ${f.message}`).join('\n')}`;
+          resultMessage += `\n\n❌ Failed to process files (${failedFiles.length}):`;
+          failedFiles.forEach((f, index) => {
+            resultMessage += `\n${index + 1}. ${f.main_file}`;
+            resultMessage += `\n   Case ID: ${f.case_id || 'N/A'}`;
+            resultMessage += `\n   Error: ${f.message}`;
+          });
+        }
+
+        // 显示跳过的文件（新增）
+        if (skippedFiles.length > 0) {
+          resultMessage += `\n\n⏭️ Skipped files (${skippedFiles.length}):`;
+          skippedFiles.forEach((f, index) => {
+            resultMessage += `\n${index + 1}. ${f.main_file}`;
+            resultMessage += `\n   Case ID: ${f.case_id || 'N/A'}`;
+            resultMessage += `\n   Reason: ${f.message}`;
+          });
         }
 
         if (successFiles.length > 0) {
-          resultMessage += `\n\n💡 Tip: Since multiple files were processed in batch, the right information panel shows the last successfully processed file. You can ask about specific file information.`;
+          resultMessage += `\n\n💡 Note: The right information panel shows the last successfully processed file (${successFiles[successFiles.length - 1].main_file}).`;
+          resultMessage += `\n   All ${successFiles.length} files have been processed successfully.`;
+          resultMessage += `\n   You can ask questions about any of the processed cases.`;
           
-          // Set the last successful file's data to the right panel
+          // 设置最后一个成功文件的数据到右侧面板
           const lastSuccessFile = successFiles[successFiles.length - 1];
           if (lastSuccessFile.structured_data) {
             setChatState(prev => ({

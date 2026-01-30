@@ -726,7 +726,7 @@ async def process_multiple_files(files: List[UploadFile] = File(...)):
             
             print(f"\n📁 Processing plan {i}/{len(processing_plan)}: {plan['description']}")
             
-            if plan_type == 'skip':
+            if plan_type == 'skip' and main_file == 'email_file':
                 # Skip standalone email file
                 result = {
                     "case_id": case_id,
@@ -738,6 +738,19 @@ async def process_multiple_files(files: List[UploadFile] = File(...)):
                 results.append(result)
                 skipped_count += 1
                 print(f"⏭️ Skipping file: {main_file.filename}")
+                continue
+            elif plan_type == 'skip' and main_file == 'skip_file':
+                # Skip unhandleable file
+                result = {
+                    "case_id": case_id,
+                    "main_file": main_file.filename,
+                    "email_file": None,
+                    "status": "skipped",
+                    "message": f"Skipping unhandleable file "
+                }
+                results.append(result)
+                skipped_count += 1
+                print(f"⏭️ Skipping unhandleable file: {main_file.filename}")
                 continue
             
             try:

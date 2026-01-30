@@ -507,7 +507,7 @@ class LLMService:
   "F_contact_no": "联系电话 (Contact Number)",
   "G_slope_no": "斜坡编号 (Slope Number, e.g., 11SW-D/CR995 or 11SW-B/F199(0) instead of 11SW-D/CR995-20250324-002)",
   "H_location": "位置信息 (Location/District)",
-  "I_nature_of_request": "请求性质摘要 (Nature of Request/Comments)",
+  "I_nature_of_request": "请求性质摘要 (Generates summary of the request from the text content)",
   "J_subject_matter": "事项主题 (Subject Matter, usually Tree Trimming/Pruning)",
   "K_10day_rule_due_date": "10天规则截止日期 (10-day Rule Due Date) (dd-MMM-yyyy)",
   "L_icc_interim_due": "ICC临时回复截止日期 (ICC Interim Reply Due Date) (dd-MMM-yyyy)",
@@ -519,7 +519,41 @@ class LLMService:
   "Q_case_details": "案件详情 (Case Details/Follow-up Actions)"
 }}
 special regulations:
-1. If source (B) is TMO: The name format of E is "{{Name}} of TMO (DEVB)". The contact information is "TMO (DEVB)"
+1.Determine `D_type` based on the following criteria and return one of: `Emergency`, `Urgent`, or `General`.
+Primary Criteria
+Emergency: Immediate threat to human life or property
+  (e.g., building collapse, trees fallen onto buildings or roads).
+Urgent: Potential safety risk
+  (e.g., hazardous trees, slope cracks ≥ 5 cm, blocked main drainage causing water accumulation).
+General: No safety risk
+  (e.g., grass cutting, scattered debris).
+Adjustment Rules
+Cases located in high-risk areas*(hospitals, schools, major roads) should generally be escalated by one level (e.g., General → Urgent).
+Cases in low-risk areas*(e.g., remote or unused slopes) may be downgraded by one level (e.g., Urgent → General).
+During typhoon or heavy rain seasons, prioritize classifying cases as Emergency*when risk indicators are present.
+ 
+2.If source (B) is TMO: The name format of E is "{{Name}} of TMO (DEVB)". The contact information is "TMO (DEVB)"
+3.If B_source is RCC: Ensure that the complete name field preceding the Contact Tel No. is retrieved, which consists of words starting with two or three uppercase letters.
+4.If B_source is RCC: The content to be filled in the field of J_subject_matter shall be handled in accordance with the following rules, 
+                       which is determined by the content of I_nature_of_request to correspond to the relevant type.
+                       1). Hazardous Tree : The caller reported tree health issues (such as pest infestation, decay, aging, etc.)
+                       2). Tree Trimming / Pruning : The caller reported issues such as the need for tree pruning.
+                       3). Fallen Tree : The caller reported issues of trees becoming loose or toppling over.
+                       4). Grass Cutting : The caller reported issues such as overgrown grass or the need for grass cutting.
+                       5). Surface Erosion : The caller reported issues such as loosening of the ramp surface or corrosion damage to the ramp surface.
+                       6). Others : The caller reported other circumstances not falling into the above-mentioned categories (such as hazards caused by beehives, the need for work suspension, etc.)
+                       If the report in I meets multiple conditions, use an ampersand (&) to connect them.
+4.If B_source is RCC: Strictly fill in the exact value "N/A" (without any extra words, punctuation, or supplementary content) in both the {{L_icc_interim_due}} and {{M_icc_final_due}} fields. 
+                       Do NOT leave these fields blank, and do NOT add any other text.
+
+Extract all information from the text content. Look for patterns like:
+- Case Creation Date : YYYY-MM-DD HH:MM:SS
+- Channel : [source]
+- 1823 case: [number]
+- Subject Matter : [subject]
+- Transaction Time: [time]
+- File upload: [count] file
+- Contact information, slope numbers, locations, etc.
 
 Extract all visible information from the document. If a field is not found, use empty string. For dates, use the specified format."""
             
@@ -626,7 +660,7 @@ Extract all visible information from the document. If a field is not found, use 
   "F_contact_no": "联系电话 (Contact Number)",
   "G_slope_no": "斜坡编号 (Slope Number, e.g., 11SW-D/CR995)",
   "H_location": "位置信息 (Location/Venue)",
-  "I_nature_of_request": "请求性质摘要 (Nature of Request summary)",
+  "I_nature_of_request": "请求性质摘要 (Generates summary of the request from the text content)",
   "J_subject_matter": "事项主题 (Subject Matter)",
   "K_10day_rule_due_date": "10天规则截止日期 (dd-MMM-yyyy)",
   "L_icc_interim_due": "ICC临时回复截止日期 (dd-MMM-yyyy)",
@@ -637,6 +671,36 @@ Extract all visible information from the document. If a field is not found, use 
   "P_fax_pages": "传真页数 (File upload count, e.g., '1 + 2' if 2 files uploaded)",
   "Q_case_details": "案件详情 (Case Details, including nature of request)"
 }
+
+special regulations:
+1.The A_date_received field must always be populated with the [Date/Time] value from the row in the assignment history 
+table where [Status] = 'OPEN' and [Dept] = 'ASD'.
+
+2.Determine `D_type` based on the following criteria and return one of: `Emergency`, `Urgent`, or `General`.
+Primary Criteria
+Emergency: Immediate threat to human life or property
+  (e.g., building collapse, trees fallen onto buildings or roads).
+Urgent: Potential safety risk
+  (e.g., hazardous trees, slope cracks ≥ 5 cm, blocked main drainage causing water accumulation).
+General: No safety risk
+  (e.g., grass cutting, scattered debris).
+Adjustment Rules
+Cases located in high-risk areas*(hospitals, schools, major roads) should generally be escalated by one level (e.g., General → Urgent).
+Cases in low-risk areas*(e.g., remote or unused slopes) may be downgraded by one level (e.g., Urgent → General).
+During typhoon or heavy rain seasons, prioritize classifying cases as Emergency*when risk indicators are present.
+
+3.The content to be filled in the field of J_subject_matter shall be handled in accordance with the following rules, 
+which is determined by the content of I_nature_of_request to correspond to the relevant type.
+1). Hazardous Tree : The caller reported tree health issues (such as pest infestation, decay, aging, etc.)
+2). Tree Trimming / Pruning : The caller reported issues such as the need for tree pruning.
+3). Fallen Tree : The caller reported issues of trees becoming loose or toppling over.
+4). Grass Cutting : The caller reported issues such as overgrown grass or the need for grass cutting.
+5). Surface Erosion : The caller reported issues such as loosening of the ramp surface or corrosion damage to the ramp surface.
+6). Others : The caller reported other circumstances not falling into the above-mentioned categories (such as hazards caused by beehives, the need for work suspension, etc.)
+If the report in I meets multiple conditions, use an ampersand (&) to connect them.
+
+4.The L_icc_interim_due and M_icc_final_due field must always be populated with the [Interim Reply] and [Final Reply] date value from the row in the 'I. DUE DATE:'
+section of the case file.
 
 Extract all information from the text content. Look for patterns like:
 - Case Creation Date : YYYY-MM-DD HH:MM:SS

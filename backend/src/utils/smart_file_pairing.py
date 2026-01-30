@@ -58,7 +58,7 @@ class SmartFilePairing:
         Returns:
             List[Dict]: process计划列table，每个元素包含：
             {
-                'type': 'txt_with_email' | 'txt_only' | 'skip',
+                'type': 'txt_with_email' | 'txt_only' | 'skip' ｜ 'pdf',
                 'main_file': FileInfo,
                 'email_file': Optional[FileInfo],
                 'case_id': str,
@@ -68,13 +68,19 @@ class SmartFilePairing:
         processing_plan = []
         processed_case_ids = set()
         
-        # 分离TXTfile和邮件file
+        # 分类files
         txt_files = [f for f in self.files if not f.is_email and f.filename.lower().endswith('.txt')]
         email_files = [f for f in self.files if f.is_email]
+        pdf_files = [f for f in self.files if f.filename.lower().endswith('.pdf') and (f.filename.upper().startswith('ASD') or f.filename.upper().startswith('RCC'))]
+        skip_files = [f for f in self.files if f not in txt_files and f not in email_files and f not in pdf_files]
+
         
         print(f"📁 文件分析:")
         print(f"   - TXT案件文件: {len(txt_files)} 个")
         print(f"   - 邮件文件: {len(email_files)} 个")
+        print(f"   - 可处理PDF文件: {len(pdf_files)} 个")
+        print(f"   - 无法处理文件: {len(skip_files)} 个")
+
         
         # 为每个TXTfile寻找对应的邮件file
         for txt_file in txt_files:
@@ -115,9 +121,19 @@ class SmartFilePairing:
                 'main_file': email_file,
                 'email_file': None,
                 'case_id': email_file.case_id or 'unknown',
-                'description': f'跳过独立邮件文件 {email_file.filename}（无对应TXT文件）'
+                'description': f'跳过独立邮件文件 {email_file.filename}无对应TXT文件'
             })
-            print(f"⚠️ 跳过邮件文件: {email_file.filename} (无对应TXT文件)")
+            print(f"⚠️ 跳过邮件文件: {email_file.filename} 无对应TXT文件")
+
+        for skip_file in skip_files:
+            processing_plan.append({
+                'type': 'skip',
+                'main_file': skip_file,
+                'email_file': None,
+                'case_id': skip_file.case_id or 'unknown',
+                'description': f'跳过独立文件 {skip_file.filename}无法处理'
+            })
+            print(f"⚠️ 跳过邮件文件: {skip_file.filename} 无法处理")
         
         return processing_plan
     

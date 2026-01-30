@@ -437,7 +437,7 @@ def extract_case_data_from_pdf_with_llm(pdf_path: str, file_type: str,
                     print(f"📄 处理剩余 {len(images)-1} 页以补充信息...")
                     additional_details = []
                     
-                    # 定义需要补充的字段（TMO多一个J_subject_matter）
+                    # 定义需要补充的字段（TMO多一个J_subject_matter / RCC的J_subject_matter由LLM自动生成）
                     supplement_fields = ['I_nature_of_request', 'Q_case_details']
                     if file_type == "TMO":
                         supplement_fields.append('J_subject_matter')
@@ -482,10 +482,10 @@ def extract_case_data_from_pdf_with_llm(pdf_path: str, file_type: str,
                     if A_date:
                         # 重新格式化日期
                         result['A_date_received'] = format_date_func(A_date)
-                        # # 计算截止日期
-                        # result['K_10day_rule_due_date'] = calculate_due_date_func(A_date, 10)
-                        # result['L_icc_interim_due'] = calculate_due_date_func(A_date, 10)
-                        # result['M_icc_final_due'] = calculate_due_date_func(A_date, 21)
+                        # 计算截止日期
+                        result['K_10day_rule_due_date'] = calculate_due_date_func(A_date, 10)
+                        if file_type != "RCC": result['L_icc_interim_due'] = calculate_due_date_func(A_date, 10)
+                        if file_type != "RCC": result['M_icc_final_due'] = calculate_due_date_func(A_date, 21)
                         
                         # N: 工程完成截止日期 (取决于D)
                         days_map = {"Emergency": 1, "Urgent": 3, "General": 12}
