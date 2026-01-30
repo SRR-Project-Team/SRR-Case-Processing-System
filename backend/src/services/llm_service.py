@@ -115,167 +115,167 @@ class LLMService:
                     )
                     
                     # Log API key status (masked for security)
-                    api_key_preview = f"{self.api_key[:7]}...{self.api_key[-4:]}" if len(self.api_key) > 11 else "***"
-                    self.logger.info(f"✅ OpenAI LLM client initialized successfully")
-                    self.logger.debug(f"   - API Key: {api_key_preview}")
-                    self.logger.debug(f"   - Headers: Authorization (Bearer) and Content-Type (application/json) are auto-configured")
-                    self.logger.info(f"   - Timeout settings: connect=30s, read=60s")
-                else:
-                    self.logger.error(f"❌ Unknown provider: {provider}. Only 'openai' is supported.")
-                    self.client = None
-            except Exception as e:
-                self.logger.error(f"❌ LLM client initialization failed: {e}")
-                self.client = None
-    
-    def summarize_text(self, text: str, max_length: int = 600) -> Optional[str]:
-        """
-        Use LLM API to summarize text in one sentence
-        
-        Args:
-            text: Text to be summarized
-            max_length: Maximum length of the summary
-            
-        Returns:
-            Summary result, returns None on failure
-        """
-        try:
-            # Check API key and client
-            if not self.api_key or not self.client:
-                self.logger.warning("⚠️ API key not set or client not initialized, cannot generate AI summary")
-                return None
-            
-            # Validate input text
-            if text is None:
-                self.logger.warning("⚠️ None text provided for summarization")
-                return None
-            
-            if not isinstance(text, str):
-                self.logger.error(f"❌ Invalid text type: {type(text)}, expected str")
-                return None
-            
-            if not text.strip():
-                self.logger.warning("⚠️ Empty or whitespace-only text provided for summarization")
-                return None
-            
-            # Build request message (use single line string to avoid whitespace problem)
-            text_snippet = text[:9000] if len(text) > 9000 else text
-            message = (
-                "Summarize the following text into a single fluent English sentence (max 150 words). "
-                "The summary must include: "
-                "1) case type, "
-                "2) caller name, "
-                "3) caller department, "
-                "4) call-in date, "
-                "5) key location, "
-                "6) number of departments involved (infer if unclear), "
-                "7) whether it falls under the slope and tree maintenance department, "
-                "8) duration: from case open date to end date (or to now if missing). "
-                "If information is unclear, infer cautiously from context. "
-                f"Here is the text: {text_snippet}"
-            )
-            
-            # Call API based on provider
-            if self.provider == "openai":
-                # 配置重试参数
-                max_retries = 3
-                retry_delay = 2  # initial delay 2 seconds
-                
-                for attempt in range(1, max_retries + 1):
-                    try:
-                        self.logger.info(f"🔄 Attempting OpenAI API call (attempt {attempt}/{max_retries})...")
-                        
-                        # API call to OpenAI
-                        # Note: The following HTTP headers are automatically set by OpenAI SDK:
-                        # - Authorization: Bearer {api_key} (from client initialization)
-                        # - Content-Type: application/json (automatically set)
-                        # These do not need to be manually specified in the API call.
-                        response = self.client.chat.completions.create(
-                            model="gpt-4o-mini",
-                            messages=[
-                                {
-                                    "role": "system",
-                                    "content": "You are an expert case-log extraction assistant. You must interpret messy, noisy text logs and extract structured information reliably."
-                                },
-                                {
-                                    "role": "user",
-                                    "content": message
-                                }
-                            ],
-                            max_tokens=300,
-                            temperature=0.3
-                        )
-                        
-                        # Extract response content
-                        if response and response.choices and len(response.choices) > 0:
-                            content = response.choices[0].message.content
-                            if content and content.strip():
-                                self.logger.info("✅ OpenAI AI summary generated successfully")
-                                return content.strip()
-                        
-                        self.logger.warning("⚠️ API response is empty or invalid")
-                        return None
-                        
-                    except Exception as api_error:
-                        error_type = type(api_error).__name__
-                        error_msg = str(api_error)
-                        
-                        # check if it is a timeout error or retryable error
-                        is_timeout_error = "timeout" in error_msg.lower() or "APITimeoutError" in error_type
-                        is_retryable = is_timeout_error or "rate limit" in error_msg.lower() or "503" in error_msg or "502" in error_msg
-                        
-                        if is_retryable and attempt < max_retries:
-                            # calculate backoff delay (exponential backoff)
-                            delay = retry_delay * (2 ** (attempt - 1))
-                            self.logger.warning(
-                                f"⚠️ OpenAI API call failed (attempt {attempt}/{max_retries}): {error_type} - {error_msg}. "
-                                f"Retrying in {delay} seconds..."
-                            )
-                            time.sleep(delay)
-                            continue
-                        else:
-                            # non-retryable error or maximum retry attempts reached
-                            self.logger.error(f"❌ OpenAI API call failed after {attempt} attempt(s): {error_type} - {error_msg}")
-                            
-                            # log more detailed error information
-                            import traceback
-                            if is_timeout_error:
-                                self.logger.error(
-                                    "⏱️ Request timed out. This might be due to:\n"
-                                    "  - Slow network connection\n"
-                                    "  - OpenAI API server issues\n"
-                                    "  - Request payload too large\n"
-                                    "Consider reducing the input text length or checking your network connection."
-                                )
-                            self.logger.debug(f"Full traceback:\n{traceback.format_exc()}")
-                            
+                    # api_key_preview = f"{self.api_key[:7]}...{self.api_key[-4:]}" if len(self.api_key) > 11 else "***"
+                    # self.logger.info(f"✅ OpenAI LLM client initialized successfully")
+                    # self.logger.debug(f"   - API Key: {api_key_preview}")
+                    # self.logger.debug(f"   - Headers: Authorization (Bearer) and Content-Type (application/json) are auto-configured")
+                    # self.logger.info(f"   - Timeout settings: connect=30s, read=60s")
+                # else:
+                #     self.logger.error(f"❌ Unknown provider: {provider}. Only 'openai' is supported.")
+                #     self.client = None
+            # except Exception as e:
+            #     self.logger.error(f"❌ LLM client initialization failed: {e}")
+            #     self.client = None
+    #
+    # def summarize_text(self, text: str, max_length: int = 600) -> Optional[str]:
+    #     """
+    #     Use LLM API to summarize text in one sentence
+    #
+    #     Args:
+    #         text: Text to be summarized
+    #         max_length: Maximum length of the summary
+    #
+    #     Returns:
+    #         Summary result, returns None on failure
+    #     """
+    #     try:
+            Check API key and client
+            # if not self.api_key or not self.client:
+            #     self.logger.warning("⚠️ API key not set or client not initialized, cannot generate AI summary")
+            #     return None
+            #
+            Validate input text
+            # if text is None:
+            #     self.logger.warning("⚠️ None text provided for summarization")
+            #     return None
+            #
+            # if not isinstance(text, str):
+            #     self.logger.error(f"❌ Invalid text type: {type(text)}, expected str")
+            #     return None
+            #
+            # if not text.strip():
+            #     self.logger.warning("⚠️ Empty or whitespace-only text provided for summarization")
+            #     return None
+            #
+            Build request message (use single line string to avoid whitespace problem)
+            # text_snippet = text[:9000] if len(text) > 9000 else text
+            # message = (
+            #     "Summarize the following text into a single fluent English sentence (max 150 words). "
+            #     "The summary must include: "
+            #     "1) case type, "
+            #     "2) caller name, "
+            #     "3) caller department, "
+            #     "4) call-in date, "
+            #     "5) key location, "
+            #     "6) number of departments involved (infer if unclear), "
+            #     "7) whether it falls under the slope and tree maintenance department, "
+            #     "8) duration: from case open date to end date (or to now if missing). "
+            #     "If information is unclear, infer cautiously from context. "
+            #     f"Here is the text: {text_snippet}"
+            # )
+            #
+            Call API based on provider
+            # if self.provider == "openai":
+                配置重试参数
+                # max_retries = 3
+                # retry_delay = 2  # initial delay 2 seconds
+                #
+                # for attempt in range(1, max_retries + 1):
+                #     try:
+                #         self.logger.info(f"🔄 Attempting OpenAI API call (attempt {attempt}/{max_retries})...")
+                #
+                        API call to OpenAI
+                        Note: The following HTTP headers are automatically set by OpenAI SDK:
+                        - Authorization: Bearer {api_key} (from client initialization)
+                        - Content-Type: application/json (automatically set)
+                        These do not need to be manually specified in the API call.
+                        # response = self.client.chat.completions.create(
+                        #     model="gpt-4o-mini",
+                        #     messages=[
+                        #         {
+                        #             "role": "system",
+                        #             "content": "You are an expert case-log extraction assistant. You must interpret messy, noisy text logs and extract structured information reliably."
+                        #         },
+                        #         {
+                        #             "role": "user",
+                        #             "content": message
+                        #         }
+                        #     ],
+                        #     max_tokens=300,
+                        #     temperature=0.3
+                        # )
+                        #
+                        Extract response content
+                        # if response and response.choices and len(response.choices) > 0:
+                        #     content = response.choices[0].message.content
+                        #     if content and content.strip():
+                        #         self.logger.info("✅ OpenAI AI summary generated successfully")
+                        #         return content.strip()
+                        #
+                        # self.logger.warning("⚠️ API response is empty or invalid")
+                        # return None
+                    #
+                    # except Exception as api_error:
+                    #     error_type = type(api_error).__name__
+                    #     error_msg = str(api_              error)
+                    #
+                        check if it is a timeout error or retryable error
+                        # is_timeout_error = "timeout" in error_msg.lower() or "APITimeoutError" in error_type
+                        # is_retryable = is_timeout_error or "rate limit" in error_msg.lower() or "503" in error_msg or "502" in error_msg
+                        #
+                        # if is_retryable and attempt < max_retries:
+                            calculate backoff delay (exponential backoff)
+                            # delay = retry_delay * (2 ** (attempt - 1))
+                            # self.logger.warning(
+                            #     f"⚠️ OpenAI API call failed (attempt {attempt}/{max_retries}): {error_type} - {error_msg}. "
+                            #     f"Retrying in {delay} seconds..."
+                            # )
+                            # time.sleep(delay)
+                            # continue
+                        # else:
+                            non-retryable error or maximum retry attempts reached
+                            # self.logger.error(f"❌ OpenAI API call failed after {attempt} attempt(s): {error_type} - {error_msg}")
+                            #
+                            log more detailed error information
+                            # import traceback
+                            # if is_timeout_error:
+                            #     self.logger.error(
+                            #         "⏱️ Request timed out. This might be due to:\n"
+                            #         "  - Slow network connection\n"
+                            #         "  - OpenAI API server issues\n"
+                            #         "  - Request payload too large\n"
+                            #         "Consider reducing the input text length or checking your network connection."
+                            #     )
+                            # self.logger.debug(f"Full traceback:\n{traceback.format_exc()}")
+
                             return None
             else:
                 self.logger.warning(f"⚠️ Unsupported provider: {self.provider}. Only 'openai' is supported.")
                 return None
-            
+
             self.logger.warning("⚠️ API response is empty or invalid")
             return None
-            
+
         except Exception as e:
             # catch all other exceptions
             error_type = type(e).__name__
             error_msg = str(e)
             self.logger.error(f"❌ AI summary generation failed: {error_type} - {error_msg}")
-            
+
             # log full stack trace for debugging
             import traceback
             self.logger.error(f"Full traceback:\n{traceback.format_exc()}")
-            
+
             return None
 
     def summarize_file(self, file_path: str, max_length: int = 100) -> Optional[str]:
         """
         Use LLM API to summarize file
-        
+
         Args:
             file_path: File path
             max_length: Maximum length of summary
-            
+
         Returns:
             Summary result, returns None on failure
         """
@@ -284,27 +284,27 @@ class LLMService:
             if not self.api_key or not self.client:
                 self.logger.warning("⚠️ API key not set or client not initialized, cannot generate AI summary")
                 return None
-            
+
             # Extract content based on file type
             file_content = self._extract_file_content(file_path)
             if not file_content:
                 self.logger.error(f"❌ Unable to extract file content: {file_path}")
                 return None
-            
+
             # Call text summarization method
             return self.summarize_text(file_content, max_length)
-            
+
         except Exception as e:
             self.logger.error(f"❌ File summarization processing exception: {e}")
             return None
-    
+
     def _extract_file_content(self, file_path: str) -> Optional[str]:
         """
         Extract content based on file type
-        
+
         Args:
             file_path: File path (can be relative or absolute)
-            
+
         Returns:
             File content, returns None on failure
         """
@@ -312,24 +312,24 @@ class LLMService:
             # Handle file paths that may contain special characters like #
             # Ensure the path is properly handled (no URL decoding needed for file paths)
             original_path = file_path
-            
+
             # Convert to absolute path for reliable checking
             # Note: os.path.abspath handles # correctly, but we need to ensure
             # the path hasn't been URL-decoded incorrectly
             abs_file_path = os.path.abspath(file_path)
-            
+
             # Log path information for debugging
             self.logger.debug(f"📄 Extracting content from file:")
             self.logger.debug(f"   Original path: {original_path}")
             self.logger.debug(f"   Absolute path: {abs_file_path}")
             self.logger.debug(f"   File exists: {os.path.exists(abs_file_path)}")
-            
+
             if not os.path.exists(abs_file_path):
                 # Try to find the file in common temp directories
                 # Sometimes the file might be in a different location
                 temp_dirs = ['/tmp', '/var/tmp', os.path.join(os.getcwd(), 'temp')]
                 found_alternative = False
-                
+
                 for temp_dir in temp_dirs:
                     if os.path.exists(temp_dir):
                         # Try to find file by basename in temp directory
@@ -340,7 +340,7 @@ class LLMService:
                             abs_file_path = alt_path
                             found_alternative = True
                             break
-                
+
                 if not found_alternative:
                     self.logger.error(f"❌ File does not exist: {abs_file_path}")
                     self.logger.error(f"   Original path: {original_path}")
