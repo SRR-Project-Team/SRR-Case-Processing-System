@@ -341,6 +341,15 @@ async def process_paired_txt_file(main_file_path: str, email_file_path: str = No
         # Process TXT file separately (will automatically detect email file)
         return extract_case_data_from_txt(main_file_path)
 
+# The summary from field R
+async def AI_summary_by_R(R_content: str, filename: str) -> Dict[str, Any]:
+    if R_content:
+        return {
+            "success": True,
+            "summary": R_content,
+            "filename": filename,
+            "source": "AI Summary"
+        }
 
 # Add summary function
 async def generate_file_summary(file_content: str, filename: str, file_path: str = None) -> Dict[str, Any]:
@@ -542,7 +551,7 @@ async def process_srr_file(file: UploadFile = File(...)):
         else:
             print(f"❌ Unknown processing type: {processing_type}")
             return create_error_result(file.filename, "Unknown processing type")
-        
+
         extract_time = time.time() - extract_start
         print(f"✅ Data extraction completed, time: {extract_time:.2f} seconds")
         
@@ -586,9 +595,12 @@ async def process_srr_file(file: UploadFile = File(...)):
         # Read file content for summary
         try:
             print(f"🤖 Starting to generate AI summary", flush=True)
-            
             # Generate AI summary (pass file path to support complex files like PDF)
-            summary_result = await generate_file_summary(content, file.filename, file_path)
+            if extracted_data.get("R_AI_Summary") : 
+                print("🤖 Get summary from field R")
+                summary_result = await AI_summary_by_R(extracted_data.get("R_AI_Summary"), file.filename)
+            else : 
+                summary_result = await generate_file_summary(content, file.filename, file_path)
             print(f"✅ AI summary generation completed", flush=True)
             
         except Exception as e:
