@@ -516,10 +516,22 @@ class LLMService:
   "O1_fax_to_contractor": "发给承包商的传真日期 (Fax to Contractor Date) (YYYY-MM-DD)",
   "O2_email_send_time": "邮件发送时间 (Email Send Time) (if applicable)",
   "P_fax_pages": "传真页数 (Fax Pages)",
-  "Q_case_details": "案件详情 (Case Details/Follow-up Actions)"
+  "Q_case_details": "案件详情 (Case Details/Follow-up Actions)",
+  "R_AI_Summary": "文件内容归纳总结"
 }}
 special regulations:
-1.Determine `D_type` based on the following criteria and return one of: `Emergency`, `Urgent`, or `General`.
+1.Analyze the provided case details, including subject, TreeID, description, and event info. 
+Generate ONLY a single short phrase (2-20 words max) summarizing the I_nature_of_request by Q_case_details and R_AI_Summary,
+phrased as an infinitive action starting with one of following,
+The specified response format shall be: [specific issue(observe/repair/conduct/etc)] at [slope ID/specific treeID if priveded]: 
+    2) Fellen tree[specific treeID if provided], 
+    3) Drainage Clearance, 
+    4) Grass Cutting, 
+    5) Water Seepage, 
+    6) Rock/Soil Movement, 
+    7) Dead Tree(s) [specific treeID if provided].
+
+2.Determine `D_type` based on the following criteria and return one of: `Emergency`, `Urgent`, or `General`.
 Primary Criteria
 Emergency: Immediate threat to human life or property
   (e.g., building collapse, trees fallen onto buildings or roads).
@@ -532,10 +544,10 @@ Cases located in high-risk areas*(hospitals, schools, major roads) should genera
 Cases in low-risk areas*(e.g., remote or unused slopes) may be downgraded by one level (e.g., Urgent → General).
 During typhoon or heavy rain seasons, prioritize classifying cases as Emergency*when risk indicators are present.
  
-2.If source (B) is TMO: The name format of E is "{{Name}} of TMO (DEVB)". The contact information is "TMO (DEVB)"
-3.If B_source is RCC: Ensure that the complete name field preceding the Contact Tel No. is retrieved, which consists of words starting with two or three uppercase letters.
-4.If B_source is RCC: The content to be filled in the field of J_subject_matter shall be handled in accordance with the following rules, 
-                       which is determined by the content of I_nature_of_request to correspond to the relevant type.
+3.If source (B) is TMO: The name format of E is "{{Name}} of TMO (DEVB)". The contact information is "TMO (DEVB)"
+4.If B_source is RCC: Ensure that the complete name field preceding the Contact Tel No. is retrieved, which consists of words starting with two or three uppercase letters.
+5.If B_source is RCC: The content to be filled in the field of J_subject_matter shall be handled in accordance with the following rules, 
+                       which is determined by the content of Q_case_details and R_AI_Summary to correspond to the relevant type.
                        1). Hazardous Tree : The caller reported tree health issues (such as pest infestation, decay, aging, etc.)
                        2). Tree Trimming / Pruning : The caller reported issues such as the need for tree pruning.
                        3). Fallen Tree : The caller reported issues of trees becoming loose or toppling over.
@@ -543,8 +555,20 @@ During typhoon or heavy rain seasons, prioritize classifying cases as Emergency*
                        5). Surface Erosion : The caller reported issues such as loosening of the ramp surface or corrosion damage to the ramp surface.
                        6). Others : The caller reported other circumstances not falling into the above-mentioned categories (such as hazards caused by beehives, the need for work suspension, etc.)
                        If the report in I meets multiple conditions, use an ampersand (&) to connect them.
-4.If B_source is RCC: Strictly fill in the exact value "N/A" (without any extra words, punctuation, or supplementary content) in both the {{L_icc_interim_due}} and {{M_icc_final_due}} fields. 
+6.If B_source is RCC: Strictly fill in the exact value "N/A" (without any extra words, punctuation, or supplementary content) in both the {{L_icc_interim_due}} and {{M_icc_final_due}} fields. 
                        Do NOT leave these fields blank, and do NOT add any other text.
+
+7.Generate an at most 150 words summary of the document content(R_AI_Summary) based on the first 18 pieces of data (from A to Q), which shall include the following information: 
+    1) case type,
+    2) caller name,
+    3) caller department,
+    4) call-in date,
+    5) key location,
+    6) Specific incident (For details, refer to Q_case_details),
+    7) number of departments involved (infer if unclear),
+    8) whether it falls under the slope and tree maintenance department,
+    9) duration: from case open date to end date (or to now if missing).
+    If information is unclear, infer cautiously from context.
 
 Extract all information from the text content. Look for patterns like:
 - Case Creation Date : YYYY-MM-DD HH:MM:SS
@@ -724,7 +748,8 @@ Extract all visible information from the document. If a field is not found, use 
   "O1_fax_to_contractor": "发给承包商的传真日期 (YYYY-MM-DD)",
   "O2_email_send_time": "邮件发送时间 (Transaction Time, HH:MM:SS format if available)",
   "P_fax_pages": "传真页数 (File upload count, e.g., '1 + 2' if 2 files uploaded)",
-  "Q_case_details": "案件详情 (Case Details, including nature of request)"
+  "Q_case_details": "案件详情 (Case Details, including nature of request)",
+  "R_AI_Summary": "文件内容归纳总结"
 }
 
 special regulations:
@@ -756,6 +781,19 @@ If the report in I meets multiple conditions, use an ampersand (&) to connect th
 
 4.The L_icc_interim_due and M_icc_final_due field must always be populated with the [Interim Reply] and [Final Reply] date value from the row in the 'I. DUE DATE:'
 section of the case file.
+
+5.Generate an at most 150 words summary of the document content(R_AI_Summary) based on the first 18 pieces of data (from A to Q), which shall include the following information: 
+    1) case type,
+    2) caller name,
+    3) caller department,
+    4) call-in date,
+    5) key location,
+    6) Specific incident (For details, refer to Q_case_details),
+    7) number of departments involved (infer if unclear),
+    8) whether it falls under the slope and tree maintenance department,
+    9) duration: from case open date to end date (or to now if missing).
+    If information is unclear, infer cautiously from context.
+
 
 Extract all information from the text content. Look for patterns like:
 - Case Creation Date : YYYY-MM-DD HH:MM:SS
