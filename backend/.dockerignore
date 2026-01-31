@@ -94,6 +94,8 @@ example_*
 # Frontend build (if not needed in backend image)
 frontend/
 
+# SurrealDB data
+backend/data/tree_case_surrealdb/
 
 
 

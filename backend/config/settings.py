@@ -39,7 +39,7 @@ SURREALDB_USER = "root"                    # 默认账号
 SURREALDB_PASS = "root"                    # 默认密码
 # backend directory absolute path
 BACKEND_DIR = Path(__file__).resolve().parent.parent  # backend/
-SURREALDB_PERSIST_PATH = str(BACKEND_DIR / "tree_case_surrealdb")
+SURREALDB_PERSIST_PATH = str(BACKEND_DIR / "data" / "tree_case_surrealdb")
 
 # Embedding Configuration
 EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "ollama")  # "openai" or "ollama"

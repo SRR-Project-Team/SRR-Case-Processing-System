@@ -118,3 +118,6 @@ github-actions-key.json
 srr-pipeline-9e8f7f130f95.json
 
 docs/DEPLOYMENT_CHECKLIST.md
+
+# SurrealDB data
+backend/data/tree_case_surrealdb/
