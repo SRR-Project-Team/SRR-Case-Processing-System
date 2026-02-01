@@ -183,12 +183,20 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 # Contributors
 Thank you to all contributors who have devoted their efforts to this project. This document records the specific contributions of each participant.
 
-Iteration 1: Version v1.0.0
+Special thanks to Professor Li for her guidance.
+
+Iteration 0: Version v0.0.0
 | Username | GitHub ID | Responsible Modules | Specific Contributions |
 | -------- | --------- | ------------------- | ---------------------- |
-| Zhang Weijian | February13 | ICC |  |
-| Hou Haochen | HHC-1998 | RCC |  |
-| Luo Kairong | jsildf | TMO |  |
+| Zhang Weijian | February13 | core | **Project Initialization**: Created initial commit for SRR Case Processing System (foundational project architecture)  |
+
+
+Iteration 1: Version v1.0.0 (2026-02-01)
+| Username | GitHub ID | Commits | Lines Added | Lines Deleted | Main Contributions |
+|-------------|-------------|---------|-------------|---------------|-------------------|
+| Zhang Weijian | **February13** | 55 | 59,234 | 17,612 | **Core Feature Development**: Smart pair function, historical case matching, AI functionality<br>**ICC Module**: Date Received, Interim Due, Final Due field logic processing<br>**Cloud Deployment**: Docker compose config, Cloud Run, Firebase deployment<br>**RCC/TMO Module**: Prompt optimization, source classification logic refactoring<br>**Frontend Fixes**: Upload, avatar, icons, etc.<br>**Documentation & Maintenance**: Code comments, project documentation, database module |
+| Hou Haochen | **HHC-1998** | 3 | 140 | 25 | **RCC Prompt Optimization**: Modified prompts for columns J and R<br>**New RCC Prompt**: Added new prompt configurations for RCC |
+| Luo Kairong | **jsildf** | 5 | 204 | 157 | **Prompt Regex Optimization**: Extract slopno via regex after prompt before returning<br>**TMO and ICC Rules**: Added new rules for TMO and ICC processing<br>**Branch Merge Operations**: Merged branches<br>**TMO and ICC Rules**: Added TMO and ICC rules (collaborated with lkr) |
 
 
 ---
