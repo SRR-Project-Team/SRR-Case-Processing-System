@@ -119,7 +119,7 @@ srr-pipeline-9e8f7f130f95.json
 
 # Documentation
 docs/DEPLOYMENT_CHECKLIST.md
-docs/JOB_ALLOCATION.md
+# docs/JOB_ALLOCATION.md
 
 # SurrealDB data
 backend/data/tree_case_surrealdb/
