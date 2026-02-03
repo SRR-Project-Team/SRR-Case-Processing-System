@@ -450,20 +450,23 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
     
     print("📄 使用传统OCR方法提取PDF内容...")
     content = extract_text_from_pdf_fast(pdf_path)
-    if content:
+    if content and result:
         # G: 斜坡编号
         result['G_slope_no'] = extract_slope_no_from_form_ref(content)
-    else:
-        print("⚠️ 无法extractPDFtext content")
-
-    # 处理完slope_no返回
-    if result:
+        # 处理完slope_no返回
         return result
-
-    #如果result为空，继续进行其他字段的提取
+    elif result:
+        # 如果result不为空，content为空时，返回result
+        return result
+    elif not content and not result:
+        logger.warning("⚠️ 无法extractPDFtext content")
+        print("⚠️ 无法extractPDFtext content")
+        return _get_empty_result()
+    #
+    #如果result为空，content不为空时，继续进行其他字段的提取
     # 初始化结果字典
     result = {}
-    
+
     # A: 案件接收日期 (Date of Referral)
     result['A_date_received'] = extract_referral_date(content)
     # 需要从原始内容中extract日期string进行parse
