@@ -450,10 +450,10 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
     
     print("📄 使用传统OCR方法提取PDF内容...")
     content = extract_text_from_pdf_fast(pdf_path)
-
-    # G: 斜坡编号
-    result['G_slope_no'] = extract_slope_no_from_form_ref(content)
-    if not content:
+    if content:
+        # G: 斜坡编号
+        result['G_slope_no'] = extract_slope_no_from_form_ref(content)
+    else:
         print("⚠️ 无法extractPDFtext content")
 
     # 处理完slope_no返回
