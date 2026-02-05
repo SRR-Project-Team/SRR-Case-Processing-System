@@ -12,6 +12,32 @@ from typing import Optional, Dict, Any
 from openai import OpenAI
 import httpx
 
+# ============================================================
+# Shared Prompt Constants (used by multiple extraction methods)
+# ============================================================
+
+# Case type classification rules
+DTYPE_RULES = """Emergency: Immediate threat to life/property (collapse, fallen trees on roads/buildings)
+Urgent: Potential safety risk (hazardous trees, slope cracks >=5cm, blocked drainage)
+General: No safety risk (grass cutting, scattered debris)
+Adjust: Escalate for high-risk areas (hospitals, schools, major roads); downgrade for remote/unused slopes; prioritize Emergency during typhoon/heavy rain."""
+
+# Subject matter categories for J_subject_matter field
+SUBJECT_MATTER_CATEGORIES = """Hazardous Tree: pest/decay/aging issues
+Tree Trimming/Pruning: pruning needs
+Fallen Tree: loose/toppled trees
+Grass Cutting: overgrown grass
+Surface Erosion: slope surface damage
+Others: other issues (beehives, work suspension, etc.)
+Use & for multiple categories."""
+
+# R_AI_Summary requirements
+SUMMARY_REQUIREMENTS = """Generate R_AI_Summary (max 150 words) including:
+1) case type, 2) caller name, 3) caller department, 4) call-in date,
+5) key location, 6) specific incident, 7) departments involved,
+8) whether falls under slope/tree maintenance, 9) duration (open to end/now)."""
+
+
 class LLMService:
     """
     LLM API Service Class
@@ -494,92 +520,50 @@ class LLMService:
                 self.logger.error(f"❌ Invalid file_type: {file_type}. Must be 'RCC' or 'TMO'")
                 return None
             
-            # Build prompt - unified for both RCC and TMO with bilingual hints
+            # Build optimized prompt for RCC/TMO documents
             doc_type_hint = "RCC" if file_type == "RCC" else "TMO"
             
-            prompt = f"""Extract the following fields from this {doc_type_hint} document image. Return a JSON object with these exact keys:
-{{
-  "A_date_received": "案件接收日期 (Date of Referral) (dd-MMM-yyyy format, e.g., 15-Jan-2024)",
-  "B_source": "来源 (Source). 必须是以下4个值之一: 'TMO','ICC','RCC','Others'. 根据文档类型: 如果是TXT文件，返回'ICC'; 如果是ASD开头的PDF文件, 返回'TMO'; 如果是RCC开头的PDF文件, 返回'RCC'; 其他情况返回'Others'.",
-  "C_case_number": "1823案件号 (Case Number)",
-  "D_type": "案件类型 (Case Type: Emergency/Urgent/General)",
-  "E_caller_name": "来电人姓名/检查员姓名 (Caller Name/Inspection Officer)",
-  "F_contact_no": "联系电话 (Contact Number)",
-  "G_slope_no": "斜坡编号 (Slope Number, e.g., 11SW-D/CR995 or 11SW-B/F199 instead of 11SW-D/CR995-20250324-002)",
-  "H_location": "位置信息 (Location/District)",
-  "I_nature_of_request": "请求性质摘要 (Generates summary of the request from the text content)",
-  "J_subject_matter": "事项主题 (Subject Matter, usually Tree Trimming/Pruning)",
-  "K_10day_rule_due_date": "10天规则截止日期 (10-day Rule Due Date) (dd-MMM-yyyy)",
-  "L_icc_interim_due": "ICC临时回复截止日期 (ICC Interim Reply Due Date) (dd-MMM-yyyy)",
-  "M_icc_final_due": "ICC最终回复截止日期 (ICC Final Reply Due Date) (dd-MMM-yyyy)",
-  "N_works_completion_due": "工程完成截止日期 (Works Completion Due Date) (dd-MMM-yyyy)",
-  "O1_fax_to_contractor": "发给承包商的传真日期 (Fax to Contractor Date) (YYYY-MM-DD)",
-  "O2_email_send_time": "邮件发送时间 (Email Send Time) (if applicable)",
-  "P_fax_pages": "传真页数 (Fax Pages)",
-  "Q_case_details": "案件详情 (Case Details/Follow-up Actions)",
-  "R_AI_Summary": "文件内容归纳总结"
-}}
-special regulations:
-1.Analyze the provided case details, including subject, TreeID, description, and event info. 
-Generate ONLY a single short phrase (2-20 words max) summarizing the I_nature_of_request by Q_case_details and R_AI_Summary,
-phrased as an infinitive action starting with one of following,
-The specified response format shall be: [specific issue(observe/repair/conduct/etc)] at [slope ID/specific treeID if priveded]: 
-    2) Fellen tree[specific treeID if provided], 
-    3) Drainage Clearance, 
-    4) Grass Cutting, 
-    5) Water Seepage, 
-    6) Rock/Soil Movement, 
-    7) Dead Tree(s) [specific treeID if provided].
+            # Use shared constants for rules
+            prompt = f"""Extract fields from this {doc_type_hint} document. Return JSON only.
 
-2.Determine `D_type` based on the following criteria and return one of: `Emergency`, `Urgent`, or `General`.
-Primary Criteria
-Emergency: Immediate threat to human life or property
-  (e.g., building collapse, trees fallen onto buildings or roads).
-Urgent: Potential safety risk
-  (e.g., hazardous trees, slope cracks ≥ 5 cm, blocked main drainage causing water accumulation).
-General: No safety risk
-  (e.g., grass cutting, scattered debris).
-Adjustment Rules
-Cases located in high-risk areas*(hospitals, schools, major roads) should generally be escalated by one level (e.g., General → Urgent).
-Cases in low-risk areas*(e.g., remote or unused slopes) may be downgraded by one level (e.g., Urgent → General).
-During typhoon or heavy rain seasons, prioritize classifying cases as Emergency*when risk indicators are present.
- 
-3.If source (B) is TMO: The name format of E is "{{Name}} of TMO (DEVB)". The contact information is "TMO (DEVB)"
-4.If B_source is RCC: Ensure that the complete name field preceding the Contact Tel No. is retrieved, which consists of words starting with two or three uppercase letters.
-5.If B_source is RCC: The content to be filled in the field of J_subject_matter shall be handled in accordance with the following rules, 
-                       which is determined by the content of Q_case_details and R_AI_Summary to correspond to the relevant type.
-                       1). Hazardous Tree : The caller reported tree health issues (such as pest infestation, decay, aging, etc.)
-                       2). Tree Trimming / Pruning : The caller reported issues such as the need for tree pruning.
-                       3). Fallen Tree : The caller reported issues of trees becoming loose or toppling over.
-                       4). Grass Cutting : The caller reported issues such as overgrown grass or the need for grass cutting.
-                       5). Surface Erosion : The caller reported issues such as loosening of the ramp surface or corrosion damage to the ramp surface.
-                       6). Others : The caller reported other circumstances not falling into the above-mentioned categories (such as hazards caused by beehives, the need for work suspension, etc.)
-                       If the report in I meets multiple conditions, use an ampersand (&) to connect them.
-6.If B_source is RCC: Strictly fill in the exact value "N/A" (without any extra words, punctuation, or supplementary content) in both the {{L_icc_interim_due}} and {{M_icc_final_due}} fields. 
-                       Do NOT leave these fields blank, and do NOT add any other text.
+FIELDS (use dd-MMM-yyyy for dates, empty string if not found):
+- A_date_received: Date of Referral
+- B_source: "{doc_type_hint}" (TMO for ASD PDF, RCC for RCC PDF)
+- C_case_number: 1823 Case Number
+- D_type: Emergency/Urgent/General
+- E_caller_name: Caller/Inspection Officer name
+- F_contact_no: Contact Number
+- G_slope_no: Slope Number (e.g., 11SW-D/CR995, NOT with date suffix)
+- H_location: Location/District
+- I_nature_of_request: 2-20 word action phrase "[action] at [slope/treeID]"
+- J_subject_matter: Category from rules below
+- K_10day_rule_due_date: 10-day Rule Due Date
+- L_icc_interim_due: ICC Interim Reply Due Date
+- M_icc_final_due: ICC Final Reply Due Date
+- N_works_completion_due: Works Completion Due Date
+- O1_fax_to_contractor: Fax to Contractor Date
+- O2_email_send_time: Email Send Time
+- P_fax_pages: Fax Pages count
+- Q_case_details: Case Details/Follow-up Actions
+- R_AI_Summary: Max 150 words summary
 
-7.Generate an at most 150 words summary of the document content(R_AI_Summary) based on the first 18 pieces of data (from A to Q), which shall include the following information: 
-    1) case type,
-    2) caller name,
-    3) caller department,
-    4) call-in date,
-    5) key location,
-    6) Specific incident (For details, refer to Q_case_details),
-    7) number of departments involved (infer if unclear),
-    8) whether it falls under the slope and tree maintenance department,
-    9) duration: from case open date to end date (or to now if missing).
-    If information is unclear, infer cautiously from context.
+CLASSIFICATION RULES:
+D_type:
+{DTYPE_RULES}
 
-Extract all information from the text content. Look for patterns like:
-- Case Creation Date : YYYY-MM-DD HH:MM:SS
-- Channel : [source]
-- 1823 case: [number]
-- Subject Matter : [subject]
-- Transaction Time: [time]
-- File upload: [count] file
-- Contact information, slope numbers, locations, etc.
+J_subject_matter:
+{SUBJECT_MATTER_CATEGORIES}
 
-Extract all visible information from the document. If a field is not found, use empty string. For dates, use the specified format."""
+SOURCE-SPECIFIC RULES:
+TMO: E_caller_name="{{Name}} of TMO (DEVB)", F_contact_no="TMO (DEVB)"
+RCC: L_icc_interim_due="N/A", M_icc_final_due="N/A" (exactly, no extra text)
+RCC: E_caller_name=complete name before "Contact Tel No." (2-3 uppercase letter words)
+
+I_nature_of_request FORMAT:
+Action phrase (2-20 words): [observe/repair/conduct/etc.] at [slope ID/treeID]
+Examples: Fallen tree removal, Drainage Clearance, Grass Cutting, Water Seepage, Rock/Soil Movement, Dead Tree(s)
+
+{SUMMARY_REQUIREMENTS}"""
             
             # Call OpenAI Vision API
             self.logger.info(f"🔄 Calling OpenAI Vision API for {file_type} document...")
@@ -728,86 +712,49 @@ Extract all visible information from the document. If a field is not found, use 
             if len(full_content) > 8000:
                 full_content = full_content[:8000] + "\n\n[... content truncated ...]"
             
-            # Build prompt for TXT extraction
-            prompt = """Extract the following fields from this TXT case file content. Return a JSON object with these exact keys:
-{
-  "A_date_received": "案件接收日期 (Case Creation Date, dd-MMM-yyyy format, e.g., 15-Jan-2024)",
-  "B_source": "来源 (Source). 必须是以下4个值之一: 'TMO','ICC','RCC','Others'. 根据文档类型: 如果是TXT文件，返回'ICC'; 如果是ASD开头的PDF文件, 返回'TMO'; 如果是RCC开头的PDF文件, 返回'RCC'; 其他情况返回'Others'.",
-  "C_case_number": "1823案件号 (1823 case number, if available)",
-  "D_type": "案件类型 (Emergency/Urgent/General)",
-  "E_caller_name": "来电人姓名 (Caller Name)",
-  "F_contact_no": "联系电话 (Contact Number)",
-  "G_slope_no": "斜坡编号 (Slope Number, e.g., 11SW-D/CR995 instead of 11SW-D/CR995-20250324-002)",
-  "H_location": "位置信息 (Location/Venue)",
-  "I_nature_of_request": "请求性质摘要 (Generates summary of the request from the text content)",
-  "J_subject_matter": "事项主题 (Subject Matter)",
-  "K_10day_rule_due_date": "10天规则截止日期 (dd-MMM-yyyy)",
-  "L_icc_interim_due": "ICC临时回复截止日期 (dd-MMM-yyyy)",
-  "M_icc_final_due": "ICC最终回复截止日期 (dd-MMM-yyyy)",
-  "N_works_completion_due": "工程完成截止日期 (dd-MMM-yyyy)",
-  "O1_fax_to_contractor": "发给承包商的传真日期 (YYYY-MM-DD)",
-  "O2_email_send_time": "邮件发送时间 (Transaction Time, HH:MM:SS format if available)",
-  "P_fax_pages": "传真页数 (File upload count, e.g., '1 + 2' if 2 files uploaded)",
-  "Q_case_details": "案件详情 (Case Details, including nature of request)",
-  "R_AI_Summary": "文件内容归纳总结"
-}
+            # Build optimized prompt for TXT extraction (uses shared constants)
+            prompt = f"""Extract fields from ICC case file. Return JSON only.
 
-special regulations:
-1.The A_date_received field must always be populated with the [Date/Time] value from the row in the assignment history 
-table where [Status] = 'OPEN' and [Dept] = 'ASD'.
+CRITICAL - A_date_received (HIGHEST PRIORITY):
+Find section "II. ASSIGNMENT HISTORY:" which contains a table like:
+[Date/Time]         [Status]      [Dept]   [Assigned To]
+<datetime_1>        Misassigned   HYD      HYDM(...)
+<datetime_2>        Open          ASD      Property Services Branch
 
-2.Determine `D_type` based on the following criteria and return one of: `Emergency`, `Urgent`, or `General`.
-Primary Criteria
-Emergency: Immediate threat to human life or property
-  (e.g., building collapse, trees fallen onto buildings or roads).
-Urgent: Potential safety risk
-  (e.g., hazardous trees, slope cracks ≥ 5 cm, blocked main drainage causing water accumulation).
-General: No safety risk
-  (e.g., grass cutting, scattered debris).
-Adjustment Rules
-Cases located in high-risk areas*(hospitals, schools, major roads) should generally be escalated by one level (e.g., General → Urgent).
-Cases in low-risk areas*(e.g., remote or unused slopes) may be downgraded by one level (e.g., Urgent → General).
-During typhoon or heavy rain seasons, prioritize classifying cases as Emergency*when risk indicators are present.
+EXTRACT: The [Date/Time] from the row where [Status]="Open" AND [Dept]="ASD"
+Format conversion: "YYYY-MM-DD HH:MM:SS" -> "dd-MMM-yyyy" 
 
-3.The content to be filled in the field of J_subject_matter shall be handled in accordance with the following rules, 
-which is determined by the content of I_nature_of_request to correspond to the relevant type.
-1). Hazardous Tree : The caller reported tree health issues (such as pest infestation, decay, aging, etc.)
-2). Tree Trimming / Pruning : The caller reported issues such as the need for tree pruning.
-3). Fallen Tree : The caller reported issues of trees becoming loose or toppling over.
-4). Grass Cutting : The caller reported issues such as overgrown grass or the need for grass cutting.
-5). Surface Erosion : The caller reported issues such as loosening of the ramp surface or corrosion damage to the ramp surface.
-6). Others : The caller reported other circumstances not falling into the above-mentioned categories (such as hazards caused by beehives, the need for work suspension, etc.)
-If the report in I meets multiple conditions, use an ampersand (&) to connect them.
+RULES:
+- ONLY use this table, NEVER use "Case Creation Date" or other dates
+- If multiple matching rows, use the FIRST one
+- If no matching row, return empty string
 
-4.The L_icc_interim_due and M_icc_final_due field must always be populated with the [Interim Reply] and [Final Reply] date value from the row in the 'I. DUE DATE:'
-section of the case file.
+CLASSIFICATION RULES:
+D_type:
+{DTYPE_RULES}
 
-5.Generate an at most 150 words summary of the document content(R_AI_Summary) based on the first 18 pieces of data (from A to Q), which shall include the following information: 
-    1) case type,
-    2) caller name,
-    3) caller department,
-    4) call-in date,
-    5) key location,
-    6) Specific incident (For details, refer to Q_case_details),
-    7) number of departments involved (infer if unclear),
-    8) whether it falls under the slope and tree maintenance department,
-    9) duration: from case open date to end date (or to now if missing).
-    If information is unclear, infer cautiously from context.
+J_subject_matter (based on I_nature_of_request):
+{SUBJECT_MATTER_CATEGORIES}
 
+EXTRACTION RULES:
+- B_source: "ICC" (this is a TXT file)
+- E_caller_name: Last Name from "VI. CONTACT INFORMATION", "NA" if anonymous
+- F_contact_no: From "VI. CONTACT INFORMATION" section:
+  * If both Mobile and Email have values: "Mobile / Email"
+  * If only Mobile has value: use Mobile only
+  * If only Email has value: use Email only
+  * If both empty (anonymous): "NA"
+- L_icc_interim_due: [Interim Reply] from "I. DUE DATE:" section
+- M_icc_final_due: [Final Reply] from "I. DUE DATE:" section
+- Do NOT invent, guess, or hallucinate values
 
-Extract all information from the text content. Look for patterns like:
-- Case Creation Date : YYYY-MM-DD HH:MM:SS
-- Channel : [source]
-- 1823 case: [number]
--- For ICC, enter {Last name} from contact information to E_caller_name 
-and enter "{Mobile} / {Email Address}" in F_contact_no.
-Enter “NA” for (E) & (F) when the complainant is anonymous.
-- Subject Matter : [subject]
-- Transaction Time: [time]
-- File upload: [count] file
-- Contact information, slope numbers, locations, etc.
+{SUMMARY_REQUIREMENTS}
 
-If a field is not found, use empty string. For dates, use the specified format."""
+Return valid JSON only (empty string if not found, dd-MMM-yyyy for dates) with these exact keys:
+A_date_received, B_source, C_case_number, D_type, E_caller_name, F_contact_no,
+G_slope_no, H_location, I_nature_of_request, J_subject_matter, K_10day_rule_due_date,
+L_icc_interim_due, M_icc_final_due, N_works_completion_due, O1_fax_to_contractor,
+O2_email_send_time, P_fax_pages, Q_case_details, R_AI_Summary"""
             
             # Call OpenAI API
             self.logger.info("🔄 Calling OpenAI API for TXT document extraction...")
@@ -825,7 +772,8 @@ If a field is not found, use empty string. For dates, use the specified format."
                     }
                 ],
                 max_tokens=2000,
-                temperature=0.1  # Low temperature for accurate extraction
+                temperature=0,  # Low temperature for accurate extraction
+                top_p=1
             )
             
             # Extract response content
