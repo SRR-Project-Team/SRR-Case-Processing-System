@@ -45,11 +45,11 @@ const Login: React.FC = () => {
         });
       return;
     }
-    loginToBackend()
+    user_login()
   };
 
   // 向后端发送请求
-  const loginToBackend = async () => {
+  const user_login = async () => {
     try {
       // 2. 发送POST请求到后端
       const response = await axios.post(`${API_BASE_URL}/user/user-login`, formValues, {

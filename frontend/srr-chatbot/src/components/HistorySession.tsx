@@ -10,7 +10,7 @@ const HistorySession: React.FC = () => {
 
   // 对话框数量
 
-  const [sessionCount, setSessionCount] = useState<number[]>([1, 4, 5, 6]);
+  const [sessionCount, setSessionCount] = useState<number[]>([]);
 
   // 生成对应数量的会话记录框
   const renderSessionItems = () => {

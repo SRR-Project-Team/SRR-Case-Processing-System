@@ -15,6 +15,7 @@ import userIcon from '../images/user_icon.jpeg';
 import sidebarbutton from '../images/sidebar_button.png';  
 import userprofilepic from '../images/user_profile_picture.png';  
 import './ChatbotInterface.css';
+import axios from 'axios';
 
 
 const ChatbotInterface: React.FC = () => {
@@ -494,6 +495,92 @@ const ChatbotInterface: React.FC = () => {
     }
   };
 
+
+  ///////////////////////////////
+  // 关于User_Register的相关内容//
+  //////////////////////////////
+  // 用户数据
+  const [formValues, setFormValues] = useState({
+    username: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+  });
+
+  // URL
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001';
+
+  // 邮箱正则规则
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+  // 加载状态 - 控制点击事件频率
+  const [isRegisterLoading, setIsRegisterLoading] = useState(false);
+
+  // 处理输入变化
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormValues(prev => ({ ...prev, [name]: value }));
+  };
+
+  // 注册提交
+  const handleRegister = async () => {
+    // 空值验证
+    if (!formValues.username.trim() ||
+        !formValues.email.trim() ||
+        !formValues.phone.trim() ||
+        !formValues.password.trim() ||
+        !formValues.confirmPassword.trim()) {
+      alert('Please fill in all the information!');
+      return;
+    }
+    // 密码双重验证
+    if (formValues.password !== formValues.confirmPassword) {
+      alert('Passwords do not match!');
+        setFormValues({
+          ...formValues,
+          password: '',           
+          confirmPassword: ''
+        });
+      return;
+    }
+    // 邮箱验证
+    if (!emailRegex.test(formValues.email)) {
+      alert('Incorrect email format!');
+        setFormValues({
+          ...formValues,
+          email : ''
+        });
+      return;
+    }
+    // 电话长度验证
+    if (formValues.phone.length !== 8) {
+      alert('Only 8-digit phone numbers are accepted!');
+        setFormValues({
+          ...formValues,
+          phone : ''
+        });
+      return;
+    }
+    setIsRegisterLoading(true);
+    try {
+      const response = await axios.post(`${API_BASE_URL}/user/user-register`, formValues);
+      console.log('Registration successful!');
+      window.location.href = '/login';
+    } catch (error) {
+      alert('Registration failed, please try again!');
+      console.error(error);
+    } finally {
+      setIsRegisterLoading(false);
+    }
+  };
+
+
+  ///////////////////////////////
+  // 关于User_Login的相关内容/////
+  //////////////////////////////
+
+
   // 用户个人界面跳转功能
   const userProfileWebsitHandler = () => {
     if(userLogin){
@@ -539,7 +626,12 @@ const ChatbotInterface: React.FC = () => {
               <Routes>
                 <Route index element={<Login />} /> 
                 <Route path="login" element={<Login />} />         
-                <Route path="register" element={<RegisterForm />} /> 
+                <Route path="register" element={<RegisterForm
+                  formValues={formValues}
+                  onInputChange={handleInputChange}
+                  onRegister={handleRegister}
+                  isRegisterLoading={isRegisterLoading}
+                />} /> 
                 <Route path="history" element={<HistorySession />} /> 
               </Routes>
             </div>
