@@ -1,6 +1,7 @@
 import React from 'react';
 import { Upload, FileText, X } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
+import './FileUploadModal.css';
 
 interface FileUploadModalProps {
   isOpen: boolean;

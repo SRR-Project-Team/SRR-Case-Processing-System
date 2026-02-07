@@ -1,6 +1,7 @@
 import React from 'react';
 import { FileText, Calendar, User, MapPin, Phone, AlertTriangle } from 'lucide-react';
 import { ExtractedData } from '../types';
+import './ExtractedInfoDisplay.css';
 
 interface ExtractedInfoDisplayProps {
   data: ExtractedData;

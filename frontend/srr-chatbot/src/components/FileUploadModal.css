@@ -1,0 +1,73 @@
+/* FileUploadModal.css - 仅保留组件特有样式，通用样式已抽离到globals.css */
+.file-dropzone {
+  border: 2px dashed var(--neutral-200);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition-normal);
+  background-color: var(--neutral-50);
+  margin-bottom: var(--spacing-lg);
+}
+
+.file-dropzone:hover {
+  border-color: var(--primary);
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+.file-dropzone.active {
+  border-color: var(--success);
+  background-color: rgba(16, 185, 129, 0.05);
+}
+
+.dropzone-icon {
+  font-size: 2rem;
+  color: var(--neutral-400);
+  margin-bottom: var(--spacing-md);
+}
+
+.dropzone-text {
+  color: var(--neutral-700);
+  margin-bottom: var(--spacing-sm);
+}
+
+.dropzone-hint {
+  font-size: var(--text-xs);
+  color: var(--neutral-500);
+}
+
+.selected-files {
+  margin-bottom: var(--spacing-lg);
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  background-color: var(--neutral-50);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.file-name {
+  font-size: var(--text-sm);
+  color: var(--neutral-800);
+  max-width: 80%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-remove {
+  color: var(--danger);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  transition: var(--transition-fast);
+}
+
+.file-remove:hover {
+  color: #dc2626;
+}

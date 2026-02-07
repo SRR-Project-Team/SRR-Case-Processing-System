@@ -2,6 +2,7 @@ import React from 'react';
 import { FileText, Calendar, User, AlertCircle, X } from 'lucide-react';
 import { ExtractedData, FileInfo } from '../types';
 import ExtractedInfoDisplay from './ExtractedInfoDisplay';
+import './FileInfoModal.css';
 
 interface FileInfoModalProps {
   isOpen: boolean;

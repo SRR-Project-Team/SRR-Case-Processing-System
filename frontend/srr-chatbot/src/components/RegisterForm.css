@@ -1,0 +1,107 @@
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+
+.register-container {
+  width: 100%;          
+  height: 100%;         
+  overflow-y: auto;    
+  overflow-x: hidden;   /* 强制隐藏水平滚动条 */
+  padding: 15px;        /* 减小内边距，提升适配感 */
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box; /* 强制padding计入宽高 */
+  margin: 0;            /* 清除默认margin */
+}
+
+/* 表单标题：适配容器宽度 */
+.register-title {
+  font-size: 16px;      /* 缩小标题字号，适配窄容器 */
+  color: #333;
+  margin: 0 0 15px 0;
+  text-align: center;
+  width: 100%;          /* 严格占满容器宽度 */
+}
+
+/* 表单区域：完全贴合父容器 */
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;            /* 减小间距，适配窄容器 */
+  width: 100%;          /* 强制表单宽度=父容器可用宽度 */
+  margin: 0;            /* 清除默认margin */
+  padding: 0;           /* 清除默认padding */
+}
+
+/* 表单组：标签+输入框，严格占满表单宽度 */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;          /* 确保每组都占满表单宽度 */
+}
+
+/* 标签样式：适配窄容器 */
+.form-group label {
+  font-size: 13px;      /* 缩小标签字号 */
+  color: #666;
+  width: 100%;          /* 标签占满表单组宽度 */
+}
+
+/* 输入框：绝对适配父容器，无溢出 */
+.form-input {
+  padding: 8px 6px;     /* 减小内边距，适配窄容器 */
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;      /* 缩小输入框字号 */
+  width: 100%;          /* 输入框占满表单组宽度 */
+  box-sizing: border-box; /* 输入框的padding/border计入宽度 */
+  outline: none;        /* 清除默认聚焦边框，避免溢出 */
+}
+
+.form-input::placeholder {
+  color: #999;
+  font-size: 12px;      /* 缩小占位符字号 */
+}
+
+/* 确认按钮：完全适配容器宽度 */
+.submit-btn {
+  padding: 10px 0;      /* 减小按钮内边距 */
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;      /* 缩小按钮字号 */
+  cursor: pointer;
+  margin-top: 8px;
+  width: 100%;          /* 按钮占满表单宽度 */
+  box-sizing: border-box;
+}
+
+.submit-btn:hover {
+  background-color: #0056b3;
+}
+
+/* 滚动条优化：不影响宽度 */
+.register-container::-webkit-scrollbar {
+  width: 4px; /* 缩小滚动条宽度，减少占比 */
+}
+
+.register-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 2px;
+}
+
+.register-container::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 2px;
+}
+
+.register-container::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}

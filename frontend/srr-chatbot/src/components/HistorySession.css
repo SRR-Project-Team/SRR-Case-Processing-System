@@ -1,0 +1,136 @@
+/* 组件容器：继承父组件的宽高（父组件已定义width:20%、height:70%） */
+.history-container {
+  width: 100%;
+  height: 100%;
+  /* 核心修复：解决Flex布局下高度溢出问题，确保flex:1生效 */
+  min-height: 0;
+  /* 兜底：绑定视口高度，和父组件70%高度对应，防止父级高度失效 */
+  max-height: 70vh;
+  padding: 16px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+/* 标题样式 */
+.history-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  line-height: 1.5;
+  /* 固定标题高度，避免挤压列表 */
+  flex-shrink: 0;
+}
+
+/* 会话记录列表容器 */
+.history-session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* 明确只开启垂直滚动，关闭水平滚动（更精准） */
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* 占满容器剩余高度 */
+  flex: 1;
+  /* 辅助：解决Flex子元素高度溢出问题 */
+  min-height: 0;
+  /* 可选：美化滚动条（适配Chrome/Safari/Firefox） */
+  scrollbar-width: thin;
+  scrollbar-color: #4096ff #f1f1f1;
+}
+
+/* 美化WebKit浏览器滚动条（Chrome/Safari） */
+.history-session-list::-webkit-scrollbar {
+  width: 6px;
+}
+.history-session-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+.history-session-list::-webkit-scrollbar-thumb {
+  background: #4096ff;
+  border-radius: 3px;
+}
+.history-session-list::-webkit-scrollbar-thumb:hover {
+  background: #2684ff;
+}
+
+/* 单个会话记录框样式 */
+.history-session-item {
+  width: 100%;
+  height: 80px;
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 12px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  color: #666;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+  /* 防止项被挤压 */
+  flex-shrink: 0;
+  /* 新增：添加布局，让删除按钮靠右 */
+  justify-content: space-between;
+}
+
+/* 新增：新建会话样式 */
+.new-session {
+  background-color: #e8f4ff;
+  border-color: #4096ff;
+  color: #4096ff;
+  font-weight: 500;
+}
+.new-session:hover {
+  border-color: #2684ff;
+  background-color: #d1eaff;
+}
+
+/* 新增：删除按钮样式 */
+.delete-btn {
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  border-radius: 50%;
+  background-color: #f5f5f5;
+  color: #999;
+  cursor: pointer;
+  opacity: 0; /* 默认隐藏 */
+  transition: all 0.2s ease;
+}
+/* hover会话项时显示删除按钮 */
+.history-session-item:hover .delete-btn {
+  opacity: 1;
+}
+/* 删除按钮hover效果 */
+.delete-btn:hover {
+  background-color: #ff4d4f;
+  color: #fff;
+}
+
+.history-session-item:hover {
+  border-color: #4096ff;
+}
+
+/* 无数据提示 */
+.no-sessions {
+  text-align: center;
+  padding: 20px 0;
+  color: #999;
+  font-size: 14px;
+}
+
+/* 加载和错误提示 */
+.loading, .error {
+  text-align: center;
+  padding: 10px 0;
+  font-size: 14px;
+}
+.error {
+  color: #ff4d4f;
+}

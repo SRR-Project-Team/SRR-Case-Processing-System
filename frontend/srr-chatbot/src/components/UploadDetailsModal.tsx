@@ -2,6 +2,7 @@
 import React from 'react';
 import { X, FileText, Calendar, User, MapPin, Phone, AlertCircle } from 'lucide-react';
 import { ExtractedData, FileInfo } from '../types';
+import './UploadDetailsModal.css';
 
 interface UploadDetailsModalProps {
   isOpen: boolean;

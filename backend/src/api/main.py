@@ -111,7 +111,7 @@ from core.output import (  # Output formatting module
     create_error_result,
     validate_file_type,
     get_file_type_error_message,
-    ProcessingResult
+    ProcessingResult,
 )
 from utils.smart_file_pairing import SmartFilePairing  # Smart file pairing utility
 from utils.file_utils import read_file_with_encoding,extract_text_from_pdf_fast,extract_content_with_multiple_methods,process_excel
@@ -121,11 +121,13 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-from database import get_db_manager  # Database manager
+from database import get_db_manager, get_user_db_manager  # Database manager
 
 # Initialize database manager
 # Create global database manager instance for storing and retrieving case data
 db_manager = get_db_manager()
+# 初始化用户数据库管理器
+user_db_manager = get_user_db_manager()
 
 # Import LLM service
 from services.llm_service import get_llm_service
@@ -1158,6 +1160,40 @@ def health_check():
         }
     """
     return {"status": "healthy", "message": "SRR case processing API is running normally, supports TXT and PDF files"}
+
+
+from core.user_output import (StructuredUserData, UserProcessingResult, validate_user_data, hash_password_in_model)
+# 接收前端传回的用户注册信息
+@app.post("/user/user-register")
+def user_register(user_data : StructuredUserData) -> UserProcessingResult:
+    print(" User Registration ".center(100, "="))
+    try:
+        # 有空值直接返回
+        if validate_user_data(user_data): return validate_user_data(user_data)
+        # 密码转为HashCode/类型转为字典
+        user_dict = hash_password_in_model(user_data)
+        # 存储用户信息
+        id_result = user_db_manager.save_user(user_dict)
+        result = user_db_manager.get_user_by_ID(id_result)
+        if result:
+            return UserProcessingResult(status = "success",
+                                        message = "Successfully created a new user!")
+        else:
+            return UserProcessingResult(status = "error",
+                                        message = "Failed to create user!")
+    except Exception as e:
+        return UserProcessingResult(status = "error",
+                                    message = str(e))
+
+# 接收前端传回的用户登录信息
+@app.post("/user/user-login")
+def user_login(user_data : StructuredUserData) -> UserProcessingResult:
+    pass
+
+# 接收前端传回的用户查看信息
+@app.post("/user/user-info")
+def get_user_info(user_data : StructuredUserData) -> UserProcessingResult:
+    pass
 
 
 if __name__ == "__main__":

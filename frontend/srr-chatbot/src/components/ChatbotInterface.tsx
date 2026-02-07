@@ -1,13 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Upload, FileText } from 'lucide-react';
 import { Message, ChatState, FileSummary } from '../types';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { processFile, processMultipleFiles, queryCase, findSimilarCases, getCaseStatistics, BatchProcessingResponse } from '../services/api';
 import logoImage from '../images/system_logo.png'; 
 import universityLogo from '../images/university_logo.png';
 import FileUploadModal from './FileUploadModal';
-import FileInfoModal from './FileInfoModal'; 
+import FileInfoModal from './FileInfoModal';
+import Login from './Login';
+import RegisterForm from './RegisterForm';
+import HistorySession from './HistorySession';
 import botIcon from '../images/bot_icon.jpeg';  
 import userIcon from '../images/user_icon.jpeg';  
+import sidebarbutton from '../images/sidebar_button.png';  
+import userprofilepic from '../images/user_profile_picture.png';  
+import './ChatbotInterface.css';
+
 
 const ChatbotInterface: React.FC = () => {
   const [chatState, setChatState] = useState<ChatState>({
@@ -32,6 +40,14 @@ const ChatbotInterface: React.FC = () => {
   const [summaryResult, setSummaryResult] = useState<FileSummary | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isFileInfoModalOpen, setIsFileInfoModalOpen] = useState(false);
+  // 定义侧边栏状态
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [userLogin, setUserLogin] = useState(true);
+
+  // 切换侧边栏状态
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
 
 
   // Auto scroll to latest message
@@ -478,6 +494,14 @@ const ChatbotInterface: React.FC = () => {
     }
   };
 
+  // 用户个人界面跳转功能
+  const userProfileWebsitHandler = () => {
+    if(userLogin){
+      window.location.href = '/profile';
+    }
+
+  }
+
   return (
     <div className="chatbot-container">
       {/* Single integrated chat area */}
@@ -493,123 +517,155 @@ const ChatbotInterface: React.FC = () => {
           </div>
         </div>
 
-        <div className="chat-messages">
-          {chatState.messages.map((message) => (
-            <div key={message.id} className={`message ${message.type}`}>
-              {message.type === 'bot' && (
-                <div className="message-avatar">
-                    <img src={botIcon} alt="Bot" className="avatar-image" />
-                </div>
-              )}
-              <div className="message-content">
-                {message.fileInfo && (
-                  <div style={{ marginBottom: '8px', fontSize: '12px', opacity: 0.8 }}>
-                    <FileText size={14} style={{ display: 'inline', marginRight: '4px' }} />
-                    {message.fileInfo.name} ({(message.fileInfo.size / 1024).toFixed(1)} KB)
-                  </div>
-                )}
+        <div className="chat-body">
 
-                {/* summary message special display */}
-
-                <div style={{ whiteSpace: 'pre-line' }}>
-                  {message.content}
-                </div>
-
+          {/* 侧边栏 */}
+          <div className={`sidebar-logo ${!isSidebarOpen ? 'open' : ''}`}>
+            <img src={sidebarbutton} alt="SideBar" className="sidebar-button" onClick={toggleSidebar} style={{}}/>
+          </div>
+          <div className={`sidebar-area ${isSidebarOpen ? 'open' : ''}`}>
+            <div className="sidebar-sideberheader">
+              <div className="sidebar-userprofile" onClick={userProfileWebsitHandler}>
+              <img src={userprofilepic} alt="Profile Picture" className='sidebar-profilepic'/>
+              {userLogin ? (<span className='sidebar-iflogin-no'>Hello user</span>) 
+              : (<span className='sidebar-iflogin-yes'>Not logged in</span>)}
               </div>
-              {message.type === 'user' && (
-                <div className="message-avatar">
-                    <img src={userIcon} alt="User" className="avatar-image" />
-                </div>
-              )}
-            </div>
-          ))}
-          
-          {chatState.isLoading && (
-            <div className="message bot">
-              <div className="message-avatar">
-                <img src={botIcon} alt="Bot" className="avatar-image" />
-              </div>
-              <div className="message-content">
-                <div className="loading">
-                  <div className="loading-spinner"></div>
-                  Processing...
-                </div>
+              <div className="sidebar-sidebarclose">
+                <img src={sidebarbutton} alt="SideBar" className="sidebar-button" onClick={toggleSidebar} />
               </div>
             </div>
-          )}
-          
-          <div ref={messagesEndRef} />
-        </div>
+            {/* 登录和历史记录 */}
+            <div className="sidebar-history">
+              <Routes>
+                <Route index element={<Login />} /> 
+                <Route path="login" element={<Login />} />         
+                <Route path="register" element={<RegisterForm />} /> 
+                <Route path="history" element={<HistorySession />} /> 
+              </Routes>
+            </div>
 
-        <div className="chat-input">
-          <div className="input-container">
-            <input
-              type="text"
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={
-                chatState.isLoading 
-                  ? "Processing..." 
-                  : selectedFiles.length > 0 && !chatState.extractedData
-                    ? "Click 'Process Files' to start processing or ask questions..."
-                    : chatState.extractedData 
-                      ? "Ask questions about the case..." 
-                      : "Type your message or upload files to get started..."
-              }
-              disabled={chatState.isLoading}
-            />
-            
-            <div className="input-actions">
-              {/* File Upload Button */}
-              <button
-                className="action-button upload-button"
-                onClick={() => setIsUploadModalOpen(true)}
-                disabled={chatState.isLoading}
-                title="Upload files"
-              >
-                <Upload size={18} />
-              </button>
+          </div>
 
-              {/* Process Files Button (shown when files are selected but not processed) */}
-              {selectedFiles.length > 0 && !chatState.extractedData && (
-                <button
-                  className="action-button process-button"
-                  onClick={handleFileUpload}
-                  disabled={chatState.isLoading}
-                  title="Process selected files"
-                >
-                  {chatState.isLoading ? (
-                    <div className="loading-spinner-small"></div>
-                  ) : (
-                    <>
-                      <Upload size={18} />
-                      Process
-                    </>
+          <div className="chat-inputandoutput">
+            <div className="chat-messages">
+              {chatState.messages.map((message) => (
+                <div key={message.id} className={`message ${message.type}`}>
+                  {message.type === 'bot' && (
+                    <div className="message-avatar">
+                        <img src={botIcon} alt="Bot" className="avatar-image" />
+                    </div>
                   )}
-                </button>
-              )}
+                  <div className="message-content">
+                    {message.fileInfo && (
+                      <div style={{ marginBottom: '8px', fontSize: '12px', opacity: 0.8 }}>
+                        <FileText size={14} style={{ display: 'inline', marginRight: '4px' }} />
+                        {message.fileInfo.name} ({(message.fileInfo.size / 1024).toFixed(1)} KB)
+                      </div>
+                    )}
 
-              {/* View Details Button (shown when data is extracted) */}
-              {chatState.extractedData && (
-                <button
-                  className="action-button details-button"
-                  onClick={() => setIsFileInfoModalOpen(true)}
-                  title="View file details"
-                >
-                  <FileText size={18} />
-                </button>
-              )}
+                    {/* summary message special display */}
 
-              {/* Send Button */}
-              <button
-                className="action-button send-button"
-                onClick={handleQuery}
-                disabled={!inputMessage.trim() || chatState.isLoading}
-                title="Send message"
-              >
-                <Send size={18} />
-              </button>
+                    <div style={{ whiteSpace: 'pre-line' }}>
+                      {message.content}
+                    </div>
+
+                  </div>
+                  {message.type === 'user' && (
+                    <div className="message-avatar">
+                        <img src={userIcon} alt="User" className="avatar-image" />
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {chatState.isLoading && (
+                <div className="message bot">
+                  <div className="message-avatar">
+                    <img src={botIcon} alt="Bot" className="avatar-image" />
+                  </div>
+                  <div className="message-content">
+                    <div className="loading">
+                      <div className="loading-spinner"></div>
+                      Processing...
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="chat-input">
+              <div className="input-container">
+                <input
+                  type="text"
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder={
+                    chatState.isLoading 
+                      ? "Processing..." 
+                      : selectedFiles.length > 0 && !chatState.extractedData
+                        ? "Click 'Process Files' to start processing or ask questions..."
+                        : chatState.extractedData 
+                          ? "Ask questions about the case..." 
+                          : "Type your message or upload files to get started..."
+                  }
+                  disabled={chatState.isLoading}
+                />
+                
+                <div className="input-actions">
+                  {/* File Upload Button */}
+                  <button
+                    className="action-button upload-button"
+                    onClick={() => setIsUploadModalOpen(true)}
+                    disabled={chatState.isLoading}
+                    title="Upload files"
+                  >
+                    <Upload size={18} />
+                  </button>
+
+                  {/* Process Files Button (shown when files are selected but not processed) */}
+                  {selectedFiles.length > 0 && !chatState.extractedData && (
+                    <button
+                      className="action-button process-button"
+                      onClick={handleFileUpload}
+                      disabled={chatState.isLoading}
+                      title="Process selected files"
+                    >
+                      {chatState.isLoading ? (
+                        <div className="loading-spinner-small"></div>
+                      ) : (
+                        <>
+                          <Upload size={18} />
+                          Process
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  {/* View Details Button (shown when data is extracted) */}
+                  {chatState.extractedData && (
+                    <button
+                      className="action-button details-button"
+                      onClick={() => setIsFileInfoModalOpen(true)}
+                      title="View file details"
+                    >
+                      <FileText size={18} />
+                    </button>
+                  )}
+
+                  {/* Send Button */}
+                  <button
+                    className="action-button send-button"
+                    onClick={handleQuery}
+                    disabled={!inputMessage.trim() || chatState.isLoading}
+                    title="Send message"
+                  >
+                    <Send size={18} />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
