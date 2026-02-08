@@ -1,5 +1,6 @@
 import React from 'react';
 import { Upload, FileText, X } from 'lucide-react';
+import './FileUploadModal.css';
 import { useDropzone } from 'react-dropzone';
 
 interface FileUploadModalProps {
@@ -41,11 +42,11 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
         {/* Modal Header */}
         <div className="modal-header">
           <div className="modal-title">
-            <Upload size={20} className="modal-icon" />
+            <FileText size={18} className="modal-icon" />
             File Upload & Processing
           </div>
           <button className="modal-close" onClick={onClose}>
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
@@ -56,7 +57,7 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
             <div {...getRootProps()} className={`file-dropzone ${isDragActive ? 'active' : ''}`}>
               <input {...getInputProps()} />
               <div className="dropzone-content">
-                <Upload size={32} className="dropzone-icon" />
+                <Upload size={24} className="dropzone-icon" />
                 <div className="dropzone-text">
                   {isDragActive ? (
                     <span>Drop files here</span>
@@ -118,7 +119,7 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
               <div className="process-section">
                 <button 
                   className="process-btn"
-                  onClick={onProcessFiles}
+                  onClick={() => onProcessFiles()}
                   disabled={isLoading}
                 >
                   {isLoading ? (

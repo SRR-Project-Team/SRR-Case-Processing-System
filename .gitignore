@@ -34,6 +34,8 @@ ENV/
 .cursor/
 .vscode/
 .idea/
+.trae/
+.claude/
 *.swp
 *.swo
 *~

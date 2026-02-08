@@ -9,6 +9,8 @@ interface FileInfoModalProps {
   fileInfo: FileInfo | null;
   extractedData: ExtractedData | null;
   summaryResult?: any;
+  similarCases?: any[];
+  locationStatistics?: { total_cases?: number; is_frequent_location?: boolean; is_frequent_slope?: boolean; date_range?: string | { earliest: string; latest: string } } | null;
 }
 
 const FileInfoModal: React.FC<FileInfoModalProps> = ({
@@ -16,7 +18,9 @@ const FileInfoModal: React.FC<FileInfoModalProps> = ({
   onClose,
   fileInfo,
   extractedData,
-  summaryResult
+  summaryResult,
+  similarCases,
+  locationStatistics
 }) => {
   if (!isOpen) return null;
 
@@ -50,11 +54,11 @@ const FileInfoModal: React.FC<FileInfoModalProps> = ({
         {/* Modal Header */}
         <div className="modal-header">
           <div className="modal-title">
-            <FileText size={20} className="modal-icon" />
+            <FileText size={18} className="modal-icon" />
             File Processing Details
           </div>
           <button className="modal-close" onClick={onClose}>
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
@@ -157,6 +161,70 @@ const FileInfoModal: React.FC<FileInfoModalProps> = ({
                     </span>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Similar Historical Cases Section */}
+          {similarCases && similarCases.length > 0 && (
+            <div className="detail-section">
+              <h3 className="section-title">
+                <FileText size={16} />
+                Similar Historical Cases
+              </h3>
+              <div className="file-info-grid" style={{ flexDirection: 'column', gap: '12px' }}>
+                {similarCases.map((item: any, idx: number) => {
+                  const c = item.case || item;
+                  const score = item.similarity_score != null ? (item.similarity_score * 100).toFixed(1) : '-';
+                  const source = item.data_source || 'Unknown';
+                  const isDup = item.is_potential_duplicate;
+                  return (
+                    <div key={idx} className="info-item" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '10px', border: '1px solid var(--border, #e5e7eb)', borderRadius: '8px' }}>
+                      <div className="info-value" style={{ marginBottom: '6px' }}>
+                        [{source}] Case #{c.C_case_number || 'N/A'} ({score}% match)
+                        {isDup && <span style={{ marginLeft: '8px', color: '#dc2626', fontSize: '12px' }}>Potential duplicate</span>}
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'var(--muted-foreground, #6b7280)' }}>
+                        {c.A_date_received && <div>Date: {c.A_date_received}</div>}
+                        {c.H_location && <div>Location: {c.H_location}</div>}
+                        {c.G_slope_no && <div>Slope: {c.G_slope_no}</div>}
+                        {c.J_subject_matter && <div>Subject: {c.J_subject_matter}</div>}
+                        {c.I_nature_of_request && <div>Complaint: {String(c.I_nature_of_request).length > 150 ? String(c.I_nature_of_request).slice(0, 150) + '...' : c.I_nature_of_request}</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Location Statistics Section */}
+          {locationStatistics != null && (
+            <div className="detail-section">
+              <h3 className="section-title">
+                <FileText size={16} />
+                Location Statistics
+              </h3>
+              <div className="file-info-grid">
+                <div className="info-item">
+                  <div className="info-label">Total cases (historical)</div>
+                  <div className="info-value">{locationStatistics.total_cases ?? 0}</div>
+                </div>
+                {locationStatistics.date_range && (() => {
+                  const dr = locationStatistics.date_range;
+                  const dateRangeStr = typeof dr === 'object' && dr !== null && 'earliest' in dr && 'latest' in dr
+                    ? `${(dr as { earliest: string; latest: string }).earliest} – ${(dr as { earliest: string; latest: string }).latest}`
+                    : String(dr);
+                  return (
+                  <div className="info-item">
+                    <div className="info-label">Date range</div>
+                    <div className="info-value">{dateRangeStr}</div>
+                  </div>
+                );})()}
+                <div className="info-item">
+                  <div className="info-label">Frequent complaint location</div>
+                  <div className="info-value">{(locationStatistics.is_frequent_location || locationStatistics.is_frequent_slope) ? 'Yes' : 'No'}</div>
+                </div>
               </div>
             </div>
           )}

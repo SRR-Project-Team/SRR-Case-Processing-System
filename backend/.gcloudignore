@@ -17,6 +17,9 @@ node_modules/
 # IDEs
 .vscode/
 .idea/
+.trae/
+.claude/
+.cursor/
 
 # Documentation
 docs/

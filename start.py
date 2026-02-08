@@ -289,24 +289,31 @@ class SRRSystemManager:
             
         try:
             os.chdir(backend_dir)
-            
+            # Run backend without inheriting proxy so unreachable proxy does not crash it
+            backend_env = os.environ.copy()
+            backend_env.pop("HTTPS_PROXY", None)
+            backend_env.pop("HTTP_PROXY", None)
+            backend_env.pop("https_proxy", None)
+            backend_env.pop("http_proxy", None)
             if self.show_logs:
                 # 显示log模式：不使用PIPE，让log直接输出
-                self.backend_process = subprocess.Popen([
-                    sys.executable, "-u", "main.py"  # -u: unbuffered output
-                ])
+                self.backend_process = subprocess.Popen(
+                    [sys.executable, "-u", "main.py"],
+                    env=backend_env,
+                )
                 print("📋 Backend logs will be displayed in real-time")
             else:
                 # 静默模式：使用PIPE重定向log，-u参数确保无缓冲输出
-                self.backend_process = subprocess.Popen([
-                    sys.executable, "-u", "main.py"  # -u: unbuffered output for immediate log visibility
-                ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
+                self.backend_process = subprocess.Popen(
+                    [sys.executable, "-u", "main.py"],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0,
+                    env=backend_env,
+                )
             
             # Wait a moment to check if process started successfully
             time.sleep(3)
             if self.backend_process.poll() is None:
                 print("✅ Backend server started on http://localhost:8001")
-                
                 if not self.show_logs:
                     # 启动logmonitor线程
                     self.start_log_monitoring()

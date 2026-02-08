@@ -41,7 +41,7 @@ class HistoricalCaseMatcher:
     
     def __init__(self, data_dir: str, db_path: str):
         """
-        Initialize historical case matcher
+        Initialize historical case matcher (lazy-loads data on first use).
         
         Args:
             data_dir: Directory containing Excel/CSV data files
@@ -49,36 +49,23 @@ class HistoricalCaseMatcher:
         """
         self.data_dir = data_dir
         self.db_path = db_path
-        
-        # Data containers
+        self._data_loaded = False
+
+        # Data containers (filled by _ensure_data_loaded())
         self.slopes_complaints = pd.DataFrame()
         self.srr_data = pd.DataFrame()
         self.tree_inventory = pd.DataFrame()
         self.db_case_count = 0
-        
+        self.location_slope_mapping = {}
+
         # Similarity weights (must sum to 1.0)
-        self.WEIGHT_LOCATION = 0.40       # 40% - Primary matching criterion
-        self.WEIGHT_SLOPE_TREE = 0.30      # 30% - Subject matter
-        self.WEIGHT_SUBJECT = 0.15         # 15% - Subject category
-        self.WEIGHT_CALLER_NAME = 0.10     # 10% - Caller info
-        self.WEIGHT_CALLER_PHONE = 0.05    # 5% - Phone verification
-        
-        # Load all historical data
-        self._load_historical_data()
-        
-        # Build location-slope mapping from historical data
-        self.location_slope_mapping = self._build_location_slope_mapping()
-        
-        total_historical = len(self.slopes_complaints) + len(self.srr_data)
-        
-        print(f"✅ Historical Case Matcher initialized:")
-        print(f"   📊 Slopes Complaints 2021: {len(self.slopes_complaints):,} cases")
-        print(f"   📊 SRR Data 2021-2024: {len(self.srr_data):,} cases")
-        print(f"   🌳 Tree Inventory: {len(self.tree_inventory):,} trees")
-        print(f"   🗺️  Location-Slope Mappings: {len(self.location_slope_mapping):,} learned")
-        print(f"   ⚠️  Database cases: {self.db_case_count} (excluded from similarity search)")
-        print(f"   📈 Total searchable historical cases: {total_historical:,}")
-        print(f"   ✅ Search scope: Historical Excel/CSV data only (database excluded)")
+        self.WEIGHT_LOCATION = 0.40
+        self.WEIGHT_SLOPE_TREE = 0.30
+        self.WEIGHT_SUBJECT = 0.15
+        self.WEIGHT_CALLER_NAME = 0.10
+        self.WEIGHT_CALLER_PHONE = 0.05
+
+        print("✅ Historical Case Matcher initialized (data will load on first use)")
     
     def _load_historical_data(self):
         """Load all historical data sources"""
@@ -153,7 +140,17 @@ class HistoricalCaseMatcher:
             
         except Exception as e:
             print(f"⚠️ Error loading historical data: {e}")
-    
+
+    def _ensure_data_loaded(self):
+        """Load Excel/CSV data on first use (lazy load)."""
+        if self._data_loaded:
+            return
+        self._load_historical_data()
+        self.location_slope_mapping = self._build_location_slope_mapping()
+        self._data_loaded = True
+        total = len(self.slopes_complaints) + len(self.srr_data)
+        print(f"✅ Historical data loaded on first use: {len(self.slopes_complaints):,} + {len(self.srr_data):,} cases, {len(self.tree_inventory):,} trees")
+
     def find_similar_cases(
         self,
         current_case: Dict[str, Any],
@@ -171,8 +168,9 @@ class HistoricalCaseMatcher:
         Returns:
             List of similar cases with similarity scores and match details
         """
+        self._ensure_data_loaded()
         all_similar = []
-        
+
         # Search in Slopes Complaints 2021 (4,047 cases)
         slopes_similar = self._search_slopes_complaints(current_case, min_similarity)
         all_similar.extend(slopes_similar)
@@ -195,8 +193,9 @@ class HistoricalCaseMatcher:
         min_similarity: float
     ) -> List[Dict[str, Any]]:
         """Search in Slopes Complaints 2021 Excel data"""
+        self._ensure_data_loaded()
         results = []
-        
+
         if self.slopes_complaints.empty:
             return results
         
@@ -252,8 +251,9 @@ class HistoricalCaseMatcher:
         min_similarity: float
     ) -> List[Dict[str, Any]]:
         """Search in SRR Data 2021-2024 CSV"""
+        self._ensure_data_loaded()
         results = []
-        
+
         if self.srr_data.empty:
             return results
         
@@ -642,16 +642,17 @@ class HistoricalCaseMatcher:
     def get_slopes_for_location(self, location: str) -> List[str]:
         """
         Get slope numbers associated with a location based on historical learning
-        
+
         Args:
             location: Location name or partial match
-            
+
         Returns:
             List of slope numbers found at this location in historical data
         """
+        self._ensure_data_loaded()
         if not location:
             return []
-        
+
         location_norm = self._normalize_text(location)
         slopes = set()
         
@@ -669,13 +670,14 @@ class HistoricalCaseMatcher:
     def get_tree_info(self, slope_no: str) -> List[Dict[str, Any]]:
         """
         Get tree information for a specific slope
-        
+
         Args:
             slope_no: Slope number to search for
-            
+
         Returns:
             List of trees on the slope with details
         """
+        self._ensure_data_loaded()
         if self.tree_inventory.empty or not slope_no:
             return []
         
@@ -704,16 +706,16 @@ class HistoricalCaseMatcher:
     ) -> Dict[str, Any]:
         """
         Get comprehensive statistics from historical data
-        
+
         Args:
             location: Optional location filter
             slope_no: Optional slope number filter
             venue: Optional venue filter
-            
+
         Returns:
             Dictionary with statistical analysis
         """
-        # Collect all cases matching filters
+        self._ensure_data_loaded()
         matching_cases = []
         
         # Search Slopes Complaints
@@ -814,8 +816,28 @@ def init_historical_matcher(data_dir: str, db_path: str):
 
 
 def get_historical_matcher() -> HistoricalCaseMatcher:
-    """Get the global historical case matcher instance"""
+    """
+    Get the global historical case matcher instance (lazy-loaded)
+    
+    If not initialized, automatically initializes with default paths.
+    This prevents blocking the async startup event loop.
+    """
+    global _matcher_instance
     if _matcher_instance is None:
-        raise RuntimeError("Historical matcher not initialized. Call init_historical_matcher() first.")
+        # Lazy initialization - find data directory
+        import os
+        # Assuming this file is in backend/src/services/historical_case_matcher.py
+        # Navigate to backend/data/
+        current_file = os.path.abspath(__file__)
+        services_dir = os.path.dirname(current_file)  # backend/src/services
+        src_dir = os.path.dirname(services_dir)  # backend/src
+        backend_dir = os.path.dirname(src_dir)  # backend
+        data_dir = os.path.join(backend_dir, 'data')
+        db_path = os.path.join(data_dir, 'srr_cases.db')
+        
+        print("🔄 Lazy-loading historical case matcher (first request)...", flush=True)
+        _matcher_instance = HistoricalCaseMatcher(data_dir, db_path)
+        print("✅ Historical case matcher lazy-load complete", flush=True)
+    
     return _matcher_instance
 
