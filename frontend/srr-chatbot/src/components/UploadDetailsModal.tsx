@@ -44,7 +44,7 @@ const UploadDetailsModal: React.FC<UploadDetailsModalProps> = ({
             <span>File Upload Details</span>
           </div>
           <button className="modal-close" onClick={onClose}>
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 

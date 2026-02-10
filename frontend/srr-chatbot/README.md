@@ -155,7 +155,7 @@ REACT_APP_API_URL=http://your-api-server:8000
 ## Development Guide
 
 ### Adding New Query Types
-1. Add new query logic in the `queryCase` function in `services/api.ts`
+1. Add new query logic in the `queryCaseStream` function (or corresponding stream API) in `services/api.ts`
 2. Update related type definitions in `types/index.ts`
 3. Add corresponding query suggestions in the chat interface
 

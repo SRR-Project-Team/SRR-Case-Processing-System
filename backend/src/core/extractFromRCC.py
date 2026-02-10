@@ -765,12 +765,11 @@ def extract_case_data_from_pdf(pdf_path: str) -> Dict[str, Any]:
     # G: 斜坡编号
     result['G_slope_no'] = extract_slope_number(content)
     
-    # H: 位置 (优先从Addressfieldget，否则从Exceldataget)
-    address_location = extract_location_info(content)
-    if address_location:
-        result['H_location'] = address_location
-    else:
-        result['H_location'] = get_location_from_slope_no(result['G_slope_no'])
+    
+    # H: 位置 (只要slope number存在，优先地址本地检索)
+    if result.get('G_slope_no'):
+        if get_location_from_slope_no(result['G_slope_no']):
+            result['H_location'] = get_location_from_slope_no(result['G_slope_no'])
     
     # I: request性质摘要 (使用AI从PDF内容生成具体request摘要)
     try:
