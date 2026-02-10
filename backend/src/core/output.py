@@ -81,13 +81,16 @@ class ProcessingResult(BaseModel):
         status (str): process状态（"success" 或 "error"）
         message (str): 状态消息
         structured_data (Optional[StructuredCaseData]): 结构化data（success时）
+        case_id (Optional[int]): 案件ID（保存到数据库后）
     """
     filename: str
     status: str
     message: str
     structured_data: Optional[StructuredCaseData] = None
+    case_id: Optional[int] = None
     summary: Optional[Dict[str, Any]] = None
     raw_content: Optional[str] = None
+    similar_cases: Optional[list] = None  # 相似歷史案件
 
 def create_structured_data(extracted_data: Dict[str, Any]) -> StructuredCaseData:
     """
@@ -133,7 +136,9 @@ def create_structured_data(extracted_data: Dict[str, Any]) -> StructuredCaseData
 def create_success_result(filename: str, 
                           structured_data: StructuredCaseData, 
                           summary: Optional[Dict[str, Any]] = None,
-                          raw_content: Optional[str] = None
+                          raw_content: Optional[str] = None,
+                          case_id: Optional[int] = None,
+                          similar_cases: Optional[list] = None
                          ) -> ProcessingResult:
     """
     创建successprocess的resultobject
@@ -144,13 +149,15 @@ def create_success_result(filename: str,
         filename (str): process的文件名
         structured_data (StructuredCaseData): 结构化的案件data
         summary (Optional[Dict[str, Any]]): 可选的summarizedata
+        raw_content (Optional[str]): 原始文件内容
+        case_id (Optional[int]): 案件ID
         
     Returns:
         ProcessingResult: successprocess的resultobject
         
     Example:
         >>> data = StructuredCaseData(A_date_received="2024-01-15")
-        >>> result = create_success_result("test.txt", data)
+        >>> result = create_success_result("test.txt", data, case_id=123)
         >>> result.status
         "success"
     """
@@ -160,7 +167,9 @@ def create_success_result(filename: str,
         message="SRR案件processsuccess",
         structured_data=structured_data,
         summary=summary,
-        raw_content=raw_content
+        raw_content=raw_content,
+        case_id=case_id,
+        similar_cases=similar_cases
     )
 
 

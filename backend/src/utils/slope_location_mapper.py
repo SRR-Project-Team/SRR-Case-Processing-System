@@ -10,17 +10,23 @@ import os
 import re
 from typing import Optional
 
-def load_slope_mapping():
+# 获取当前文件所在目录的父目录（即backend目录）
+CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+def load_slope_mapping(language : str = "English"):
     """加载斜坡位置映射data"""
-    mapping_file = 'models/mapping_rules/slope_location_mapping.json'
+    if language == "English":
+        mapping_file = os.path.join(CURRENT_DIR, 'models/mapping_rules/slope_location_mapping.json')
+    elif language == "Chinese":
+        mapping_file = os.path.join(CURRENT_DIR, 'models/mapping_rules/slope_location_mapping_cn.json')
     if os.path.exists(mapping_file):
         with open(mapping_file, 'r', encoding='utf-8') as f:
             return json.load(f)
     else:
-        print("⚠️ 斜坡映射文件不存在，使用空映射")
+        print(f"⚠️ 斜坡映射文件不存在: {mapping_file}")
         return {}
 
-def get_location_from_slope_no(slope_no: str) -> str:
+def get_location_from_slope_no(slope_no: str, language: str = "English") -> str:
     """
     根据斜坡编号获取位置information
     
@@ -34,23 +40,28 @@ def get_location_from_slope_no(slope_no: str) -> str:
         return ""
     
     # loadmapdata
-    slope_mapping = load_slope_mapping()
+    slope_mapping_en = load_slope_mapping("English")
+    slope_mapping_cn = load_slope_mapping("Chinese")
     
-    if not slope_mapping:
+    if not slope_mapping_en or not slope_mapping_cn:
         print("⚠️ 斜坡映射data未加载")
         return ""
     
     # 直接find
-    if slope_no in slope_mapping:
-        return slope_mapping[slope_no]
+    if slope_no in slope_mapping_en:
+        if slope_no in slope_mapping_cn:
+            return slope_mapping_en[slope_no] + "/" + slope_mapping_cn[slope_no]
+        return slope_mapping_en[slope_no]
     
     # 尝试多种match方式
     cleaned_slope = clean_slope_number(slope_no)
-    if cleaned_slope in slope_mapping:
-        return slope_mapping[cleaned_slope]
+    if slope_no in slope_mapping_en:
+        if slope_no in slope_mapping_cn:
+            return slope_mapping_en[cleaned_slope] + "/" + slope_mapping_cn[cleaned_slope]
+        return slope_mapping_en[cleaned_slope]
     
-    # 模糊match
-    for mapped_slope, venue in slope_mapping.items():
+    # 模糊match两表中的地址
+    for mapped_slope, venue in slope_mapping_en.items():
         if is_slope_match(slope_no, mapped_slope):
             return venue
     

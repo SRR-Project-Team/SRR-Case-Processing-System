@@ -45,3 +45,12 @@ SURREALDB_PERSIST_PATH = str(BACKEND_DIR / "data" / "tree_case_surrealdb")
 EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "ollama")  # "openai" or "ollama"
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")  # 推荐的 embedding 模型
+OLLAMA_CHAT_MODEL = os.getenv("OLLAMA_CHAT_MODEL", "llama3.2")  # default chat model for Ollama
+# Batch size for Ollama /api/embed (input array). Larger = fewer requests; >16 may reduce quality.
+EMBEDDING_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "16"))
+
+# RAG Knowledge Base: max chunks per file (over limit triggers adaptive larger chunk size so full file is indexed)
+MAX_RAG_CHUNKS = int(os.getenv("MAX_RAG_CHUNKS", "5000"))
+
+# Server: keep-alive timeout (seconds) so long-running clients/proxies don't get dropped
+UVICORN_TIMEOUT_KEEP_ALIVE = int(os.getenv("UVICORN_TIMEOUT_KEEP_ALIVE", "120"))

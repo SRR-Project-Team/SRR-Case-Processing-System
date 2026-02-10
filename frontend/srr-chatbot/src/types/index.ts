@@ -13,6 +13,7 @@ export interface FileInfo {
   size: number;
   type: string;
   summary?: FileSummary;  // Added summary field
+  case_id?: number;  // Added for linking to processed case
 }
 
 // Extracted case data
@@ -49,12 +50,14 @@ export interface FileSummary {
 // API response types
 export interface ApiResponse {
   filename: string;
-  status: 'success' | 'error';
+  status: 'success' | 'error' | 'duplicate';
   message: string;
   data?: ExtractedData;
   error?: string;
   summary?: FileSummary;  // Added summary field
   raw_content?: string; // raw content of the file
+  case_id?: number; // Case ID from database
+  similar_cases?: Array<{ case: any; similarity_score: number; is_potential_duplicate?: boolean; data_source?: string }>; // 相似歷史案件
 }
 
 // Chat state
@@ -71,4 +74,96 @@ export interface QueryRequest {
   query: string;
   context?: ExtractedData;
   raw_content?: string;
+  provider?: string;
+  model?: string;
+}
+
+// Authentication related interfaces (re-export from api.ts for convenience)
+export interface User {
+  phone_number: string;
+  full_name: string;
+  department: string;
+  role: string;
+  email: string;
+}
+
+export interface RegisterRequest {
+  phone_number: string;
+  password: string;
+  full_name: string;
+  department?: string;
+  role?: string;
+  email?: string;
+}
+
+export interface LoginRequest {
+  phone_number: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
+// Conversation and Reply Draft types
+export interface ConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+  language: string;
+}
+
+export interface ReplyDraftResponse {
+  status: string;
+  conversation_id: number;
+  message: string;
+  is_question: boolean;
+  draft_reply?: string;
+  language: string;
+}
+
+export interface Conversation {
+  id: number;
+  case_id: number;
+  conversation_type: string;
+  messages: ConversationMessage[];
+  language: string;
+  draft_reply?: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// RAG Knowledge Base File types
+export interface RAGFile {
+  id: number;
+  filename: string;
+  file_type: string;
+  file_size: number;
+  upload_time: string;
+  processed: boolean;
+  chunk_count: number;
+  processing_error?: string;
+}
+
+export interface RAGFileDetails extends RAGFile {
+  file_path: string;
+  mime_type: string;
+  preview_text: string | null;
+  metadata: Record<string, any>;
+}
+
+export interface FilePreview {
+  filename: string;
+  file_type: string;
+  preview_content: string;
+  total_length: number;
+}
+
+export interface RAGFileUploadResponse {
+  status: string;
+  message: string;
+  data: RAGFile;
 }

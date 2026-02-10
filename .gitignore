@@ -34,9 +34,14 @@ ENV/
 .cursor/
 .vscode/
 .idea/
+.trae/
+.claude/
 *.swp
 *.swo
 *~
+
+.dockerignore
+.gcloudignore
 
 # OS
 .DS_Store
