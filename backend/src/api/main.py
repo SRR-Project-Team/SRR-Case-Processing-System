@@ -1539,9 +1539,11 @@ async def find_similar_cases(case_data: dict):
 
         response = {
             "status": "success",
+            "current_case_number": case_data.get("C_case_number"),
             "total_found": len(similar_cases),
             "similar_cases": similar_cases,
             "search_criteria": {
+                "case_number": case_data.get("C_case_number"),
                 "location": case_data.get("H_location"),
                 "slope_no": case_data.get("G_slope_no"),
                 "caller_name": case_data.get("E_caller_name"),
