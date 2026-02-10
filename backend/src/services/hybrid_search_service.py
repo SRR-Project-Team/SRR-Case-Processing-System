@@ -14,6 +14,7 @@ from src.core.vector_store import SurrealDBSyncClient
 def _vector_record_to_historical_case(rec: dict) -> dict:
     """Map vector store record to historical case dict for scoring."""
     return {
+        "C_case_number": rec.get("case_number") or "",
         "H_location": rec.get("location") or "",
         "G_slope_no": rec.get("slope_no") or "",
         "J_subject_matter": "",
@@ -85,9 +86,19 @@ class HybridSearchService:
         if not candidates:
             return []
 
+        # Get current case number for filtering
+        current_case_number = current_case.get('C_case_number', '').strip()
+
         scored = []
         for c in candidates:
             historical_for_score = _vector_record_to_historical_case(c)
+            
+            # Skip if same case number (same case, not similar case)
+            hist_case_number = historical_for_score.get('C_case_number', '').strip()
+            if current_case_number and hist_case_number and \
+               current_case_number == hist_case_number:
+                continue
+            
             score, details = self.weight_matcher._calculate_similarity(
                 current_case, historical_for_score
             )

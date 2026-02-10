@@ -199,6 +199,9 @@ class HistoricalCaseMatcher:
         if self.slopes_complaints.empty:
             return results
         
+        # Get current case number for filtering
+        current_case_number = current_case.get('C_case_number', '').strip()
+        
         for idx, row in self.slopes_complaints.iterrows():
             # Extract tree information from Remarks
             tree_info = self._extract_tree_info_from_remarks(self._safe_get(row, 'Remarks'))
@@ -231,6 +234,12 @@ class HistoricalCaseMatcher:
                 'inspector_remarks': tree_info['inspector_remarks']  # Inspector comments
             }
             
+            # Skip if same case number (same case, not similar case)
+            hist_case_number = historical_case.get('C_case_number', '').strip()
+            if current_case_number and hist_case_number and \
+               current_case_number == hist_case_number:
+                continue
+            
             # Calculate similarity
             score, details = self._calculate_similarity(current_case, historical_case)
             
@@ -257,6 +266,9 @@ class HistoricalCaseMatcher:
         if self.srr_data.empty:
             return results
         
+        # Get current case number for filtering
+        current_case_number = current_case.get('C_case_number', '').strip()
+        
         for idx, row in self.srr_data.iterrows():
             # Use Verified Slope No. if available
             slope_no = self._safe_get(row, 'Verified Slope No.') or self._safe_get(row, 'Slope No.\n')
@@ -276,6 +288,12 @@ class HistoricalCaseMatcher:
                 'I_nature_of_request': self._safe_get(row, 'Inquiry'),
                 'J_subject_matter': self._safe_get(row, 'Subject Matter'),
             }
+            
+            # Skip if same case number (same case, not similar case)
+            hist_case_number = historical_case.get('C_case_number', '').strip()
+            if current_case_number and hist_case_number and \
+               current_case_number == hist_case_number:
+                continue
             
             score, details = self._calculate_similarity(current_case, historical_case)
             

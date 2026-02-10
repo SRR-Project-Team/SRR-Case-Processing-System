@@ -77,9 +77,9 @@ logs/
 # Git backup
 .git_backup/
 
-# Database
-*.db
-*.sqlite3
+# # Database
+# *.db
+# *.sqlite3
 
 # Temporary files
 *.tmp
