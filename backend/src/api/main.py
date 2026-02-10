@@ -458,8 +458,11 @@ async def process_paired_txt_file(main_file_path: str, email_file_path: str = No
         return extract_case_data_from_txt(main_file_path)
 
 # The summary from field R
-async def AI_summary_by_R(R_content: str, filename: str) -> Dict[str, Any]:
+async def AI_summary_by_R(R_content: str, filename: str, case_data: dict) -> Dict[str, Any]:
     if R_content:
+        llm_service = get_llm_service()
+        R_content = llm_service._review_sum_(R_content, case_data)
+        print("HHHHH:", R_content)
         return {
             "success": True,
             "summary": R_content,
@@ -1021,7 +1024,8 @@ async def process_srr_file(
 
             summary_result = None
             if extracted_data.get("R_AI_Summary"):
-                summary_result = await AI_summary_by_R(extracted_data.get("R_AI_Summary"), file.filename)
+                R_AI_Summary_value = extracted_data.pop("R_AI_Summary")
+                summary_result = await AI_summary_by_R(R_AI_Summary_value, file.filename, extracted_data)
                 if summary_result and summary_result.get("summary"):
                     yield sse_event("summary", {"summary": summary_result["summary"], "success": True})
             else:
@@ -2788,7 +2792,7 @@ if __name__ == "__main__":
         app="main:app",
         host="0.0.0.0",
         port=8001,
-        reload=False,
+        reload=True,
         timeout_keep_alive=UVICORN_TIMEOUT_KEEP_ALIVE,
     )
     

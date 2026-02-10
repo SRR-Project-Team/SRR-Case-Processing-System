@@ -846,7 +846,8 @@ Return valid JSON only (empty string if not found, dd-MMM-yyyy for dates) with t
 A_date_received, B_source, C_case_number, D_type, E_caller_name, F_contact_no,
 G_slope_no, H_location, I_nature_of_request, J_subject_matter, K_10day_rule_due_date,
 L_icc_interim_due, M_icc_final_due, N_works_completion_due, O1_fax_to_contractor,
-O2_email_send_time, P_fax_pages, Q_case_details, R_AI_Summary"""
+O2_email_send_time, P_fax_pages, Q_case_details, R_AI_Summary
+"""
             
             # Call OpenAI API
             self.logger.info("🔄 Calling OpenAI API for TXT document extraction...")
@@ -1256,9 +1257,118 @@ O2_email_send_time, P_fax_pages, Q_case_details, R_AI_Summary"""
         except Exception as e:
             self.logger.error(f"❌ Reply draft stream failed: {type(e).__name__} - {e}")
             import traceback
-            self.logger.error(traceback.format_exc())
+            self.logger
             yield ""
 
+    # 二次审核AI Summary
+    def _review_sum_(self, input_str: str, correction_dict: Dict[str, Any]) -> str:
+        """
+        Use LLM API to correct keywords in the input string using the provided dictionary
+        
+        Args:
+            input_str: Input string that may contain keywords needing correction
+            correction_dict: Dictionary containing correct keyword mappings
+            
+        Returns:
+            Corrected string with keywords replaced based on the dictionary, or None on failure
+        """
+        try:
+            # Check API key and client
+            if not self.api_key or not self.client:
+                self.logger.warning("⚠️ API key not set or client not initialized, cannot use OpenAI API")
+                return None
+            
+            # Validate input
+            if not isinstance(input_str, str):
+                self.logger.error(f"❌ Invalid input_str type: {type(input_str)}, expected str")
+                return None
+            
+            if not input_str.strip():
+                self.logger.warning("⚠️ Empty input_str provided")
+                return input_str
+            
+            if not isinstance(correction_dict, dict):
+                self.logger.error(f"❌ Invalid correction_dict type: {type(correction_dict)}, expected dict")
+                return input_str
+            
+            # Convert dict to readable format
+            dict_content = ""
+            for key, value in correction_dict.items():
+                dict_content += f"- {key}: {value}\n"
+            
+            # Build prompt for keyword correction
+            prompt = f"""Correct keywords in the following input string based on the provided dictionary.
+First, read this text and understand the content it describes:
+INPUT STRING: {input_str}
+
+Next, read the dictionary. I will explain the meaning of each key-value pair in it:
+CORRECTION DICTIONARY: {dict_content}
+- A_date_received: Date of Referral
+- B_source: ICC, TMO, RCC (TMO for ASD PDF, RCC for RCC PDF)
+- C_case_number: 1823 Case Number
+- D_type: Emergency/Urgent/General
+- E_caller_name: Caller/Inspection Officer name
+- F_contact_no: Contact Number
+- G_slope_no: Slope Number (e.g., 11SW-D/CR995, NOT with date suffix)
+- H_location: Location/District
+- I_nature_of_request: 2-20 word action phrase "[action] at [slope/treeID]"
+- J_subject_matter: Category from rules below
+- K_10day_rule_due_date: 10-day Rule Due Date
+- L_icc_interim_due: ICC Interim Reply Due Date
+- M_icc_final_due: ICC Final Reply Due Date
+- N_works_completion_due: Works Completion Due Date
+- O1_fax_to_contractor: Fax to Contractor Date
+- O2_email_send_time: Email Send Time
+- P_fax_pages: Fax Pages count
+- Q_case_details: Case Details/Follow-up Actions
+
+INSTRUCTIONS:
+1. Focus on checking whether the personal names and place names appearing in the string (str) are inconsistent with those recorded in the dictionary. 
+If there is any inconsistency, the dictionary shall prevail, and the addresses appearing in the string shall be revised accordingly.
+2. Maintain the original structure and meaning of the string
+3. Only change keywords that appear in the dictionary
+4. Return the corrected string in the same language as the input
+
+OUTPUT: 
+Return only the corrected string, no explanations."""
+
+            self.logger.info("🔄 Calling OpenAI API for keyword correction...")
+            
+            # Call OpenAI API
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a keyword correction assistant. You help correct keywords in text using provided dictionary mappings."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                max_tokens=2000,
+                temperature=0.1  # Low temperature for accurate corrections
+            )
+            
+            # Extract response content
+            if response and response.choices and len(response.choices) > 0:
+                content = response.choices[0].message.content
+                if content and content.strip():
+                    corrected_str = content.strip()
+                    self.logger.info(f"✅ Keyword correction completed successfully")
+                    return corrected_str
+            
+            self.logger.warning("⚠️ OpenAI API response is empty or invalid")
+            return input_str
+            
+        except Exception as e:
+            error_type = type(e).__name__
+            error_msg = str(e)
+            self.logger.error(f"❌ Keyword correction failed: {error_type} - {error_msg}")
+            import traceback
+            self.logger.error(f"Full traceback:\n{traceback.format_exc()}")
+            return input_str
 
 # Global LLM service instance
 _llm_service = None
