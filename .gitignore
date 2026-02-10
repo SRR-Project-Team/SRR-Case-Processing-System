@@ -128,3 +128,4 @@ docs/DEPLOYMENT_CHECKLIST.md
 
 # SurrealDB data
 backend/data/tree_case_surrealdb/
+backend/.env
