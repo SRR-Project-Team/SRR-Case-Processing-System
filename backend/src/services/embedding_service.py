@@ -1,11 +1,10 @@
-from src.core.embedding import embed_text
+from src.core.embedding import embed_text, embed_texts
 
 def generate_embedding(text_chunks: list[str]) -> list[list[float]]:
-    '''
-    Generate a batch of embeddings for a list of text chunks, Return a list of embeddings vectors
-    '''
-    embeddings = []
-    for chunk in text_chunks:
-        vec = embed_text(chunk)
-        embeddings.append(vec)
-    return embeddings
+    """
+    Generate embeddings for many chunks in batches (fewer HTTP requests to Ollama).
+    Uses embed_texts() with configurable batch size (env EMBEDDING_BATCH_SIZE, default 16).
+    """
+    if not text_chunks:
+        return []
+    return embed_texts(text_chunks)

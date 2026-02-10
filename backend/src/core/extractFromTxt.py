@@ -431,9 +431,10 @@ def extract_case_data_from_txt(txt_path: str) -> dict:
                     # O1: 发给承包商的传真日期
                     result['O1_fax_to_contractor'] = format_date_only(A_date)
             
-            # H: 位置 (如果G_slope_no存在，从Excel数据获取)
-            if result.get('G_slope_no') and not result.get('H_location'):
-                result['H_location'] = get_location_from_slope_no(result['G_slope_no'])
+            # H: 位置 (只要slope number存在，优先地址本地检索)
+            if result.get('G_slope_no'):
+                if get_location_from_slope_no(result['G_slope_no']):
+                    result['H_location'] = get_location_from_slope_no(result['G_slope_no'])
             
             return result
         else:

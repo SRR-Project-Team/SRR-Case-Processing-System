@@ -5,12 +5,29 @@ import requests
 EMBEDDING_MODEL = "ollama"
 OLLAMA_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")  # 或 "mxbai-embed-large"
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+# Batch size for /api/embed; override with env EMBEDDING_BATCH_SIZE (see config/settings.py)
+EMBEDDING_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "16"))
 
 def embed_text(text: str) -> List[float]:
+    """Single-text embed; for many chunks use embed_texts() to avoid N requests."""
     if EMBEDDING_MODEL == "ollama":
         return _embed_text_ollama(text)
     else:
         raise Exception(f"不支持的嵌入模型: {EMBEDDING_MODEL}")
+
+
+def embed_texts(texts: List[str], batch_size: int = None) -> List[List[float]]:
+    """
+    Batch embed many texts with fewer HTTP requests.
+    Ollama /api/embed accepts input as array of strings; we send batches of batch_size.
+    """
+    if not texts:
+        return []
+    batch_size = batch_size or EMBEDDING_BATCH_SIZE
+    if EMBEDDING_MODEL == "ollama":
+        return _embed_batch_ollama(texts, batch_size)
+    else:
+        return [_embed_text_ollama(t) for t in texts]
 
 def _embed_text_ollama(text: str) -> List[float]:
     """
@@ -80,3 +97,29 @@ def _embed_text_ollama(text: str) -> List[float]:
         )
     except requests.exceptions.RequestException as e:
         raise Exception(f"Ollama embedding 请求失败: {str(e)}")
+
+
+def _embed_batch_ollama(texts: List[str], batch_size: int) -> List[List[float]]:
+    """
+    Call Ollama /api/embed with input as list of strings (batch). Reduces N requests to ceil(N/batch_size).
+    Falls back to sequential single-text if batch API fails (e.g. old Ollama).
+    """
+    out: List[List[float]] = []
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i : i + batch_size]
+        try:
+            url = f"{OLLAMA_BASE_URL}/api/embed"
+            payload = {"model": OLLAMA_EMBED_MODEL, "input": batch}
+            response = requests.post(url, json=payload, timeout=60)
+            response.raise_for_status()
+            result = response.json()
+            vectors = result.get("embeddings")
+            if vectors and isinstance(vectors, list) and len(vectors) == len(batch):
+                out.extend(vectors)
+            else:
+                for t in batch:
+                    out.append(_embed_text_ollama(t))
+        except Exception:
+            for t in batch:
+                out.append(_embed_text_ollama(t))
+    return out

@@ -1,0 +1,78 @@
+.file-management {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f5f7fa;
+}
+
+.file-management-header {
+  background: white;
+  padding: 20px 30px;
+  border-bottom: 1px solid #e0e6ed;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.file-management-header h1 {
+  margin: 0 0 20px 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.file-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.file-tab {
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--muted-foreground, #6b7280);
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.file-tab:hover {
+  color: var(--primary, #b91c1c);
+  background: var(--muted, #f8f9fa);
+}
+
+.file-tab.active {
+  color: var(--primary, #b91c1c);
+  border-bottom-color: var(--primary, #b91c1c);
+}
+
+.file-management-content {
+  flex: 1;
+  overflow: auto;
+  padding: 30px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .file-management-header {
+    padding: 15px 20px;
+  }
+
+  .file-management-header h1 {
+    font-size: 20px;
+    margin-bottom: 15px;
+  }
+
+  .file-tabs {
+    flex-wrap: wrap;
+  }
+
+  .file-tab {
+    font-size: 14px;
+    padding: 8px 16px;
+  }
+
+  .file-management-content {
+    padding: 20px;
+  }
+}

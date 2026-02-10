@@ -29,6 +29,9 @@ ENV/
 .venv
 
 # IDEs
+.trae/
+.claude/
+.cursor/
 .vscode/
 .idea/
 *.swp

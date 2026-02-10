@@ -503,9 +503,10 @@ def extract_case_data_from_pdf_with_llm(pdf_path: str, file_type: str,
                 except:
                     result['P_fax_pages'] = "1"
                 
-                # H: 位置 (如果G_slope_no存在，从Excel数据获取)
-                if result.get('G_slope_no') and not result.get('H_location'):
-                    result['H_location'] = get_location_from_slope_no_func(result['G_slope_no'])
+                # H: 位置 (只要slope number存在，优先地址本地检索)
+                if result.get('G_slope_no'):
+                    if get_location_from_slope_no_func(result['G_slope_no']):
+                        result['H_location'] = get_location_from_slope_no_func(result['G_slope_no'])
                 
                 return result
             else:
