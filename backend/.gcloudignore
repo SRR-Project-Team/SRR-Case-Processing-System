@@ -25,5 +25,5 @@ node_modules/
 docs/
 *.md
 
-# Database
-*.db
+# # Database
+# *.db
