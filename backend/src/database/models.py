@@ -220,6 +220,7 @@ class KnowledgeBaseFile(Base):
     file_path = Column(String(500), nullable=False)  # 文件存储路径
     file_size = Column(Integer, nullable=False)  # 文件大小(bytes)
     mime_type = Column(String(100), nullable=False)  # MIME类型
+    uploaded_by = Column(String(20), ForeignKey('users.phone_number'), nullable=True)  # 上传者
     
     # 处理状态
     upload_time = Column(DateTime, default=lambda: datetime.now(pytz.timezone('Asia/Shanghai')))

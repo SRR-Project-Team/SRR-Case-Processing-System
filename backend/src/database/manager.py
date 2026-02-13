@@ -74,9 +74,13 @@ class DatabaseManager:
                 'processing_time': 'DATETIME',
                 'ai_summary': 'TEXT',
                 'similar_historical_cases': 'TEXT',
+                'location_statistics': 'TEXT',
             },
             'conversation_history': {
                 'user_phone': 'VARCHAR(20)',
+            },
+            'knowledge_base_files': {
+                'uploaded_by': 'VARCHAR(20)',
             },
         }
         
@@ -123,6 +127,21 @@ class DatabaseManager:
             return None
         finally:
             session.close()
+
+    def get_case_for_user(self, case_id: int, user_phone: str, role: str = "user") -> Optional[dict]:
+        """按用户/角色获取单个案件，避免越权访问。"""
+        session = self.get_session()
+        try:
+            query = session.query(SRRCase).filter(
+                SRRCase.id == case_id,
+                SRRCase.is_active == True
+            )
+            if role not in ("admin", "manager"):
+                query = query.filter(SRRCase.uploaded_by == user_phone)
+            case = query.first()
+            return self._case_to_dict(case) if case else None
+        finally:
+            session.close()
     
     def get_cases(self, limit=100, offset=0, deduplicate_by_case_number: bool = True) -> list:
         """
@@ -151,6 +170,40 @@ class DatabaseManager:
             return case_dicts
         finally:
             session.close()
+
+    def get_cases_for_user(
+        self,
+        user_phone: str,
+        role: str = "user",
+        limit: int = 100,
+        offset: int = 0,
+        deduplicate_by_case_number: bool = True
+    ) -> List[dict]:
+        """按用户/角色获取案件列表。"""
+        session = self.get_session()
+        try:
+            order_col = func.coalesce(SRRCase.updated_at, SRRCase.created_at).desc()
+            query = session.query(SRRCase).filter(SRRCase.is_active == True)
+            if role not in ("admin", "manager"):
+                query = query.filter(SRRCase.uploaded_by == user_phone)
+            cases = query.order_by(order_col, SRRCase.id.desc()) \
+                .offset(offset).limit(limit * 3 if deduplicate_by_case_number else limit).all()
+            case_dicts = [self._case_to_dict(case) for case in cases]
+            if deduplicate_by_case_number:
+                seen = {}
+                for c in case_dicts:
+                    cn = (c.get('C_case_number') or '').strip()
+                    if not cn:
+                        seen[f'_empty_{c["id"]}'] = c
+                        continue
+                    if cn not in seen:
+                        seen[cn] = c
+                case_dicts = list(seen.values())
+                case_dicts.sort(key=lambda x: (x.get('updated_at') or x.get('created_at') or ''), reverse=True)
+                case_dicts = case_dicts[:limit]
+            return case_dicts
+        finally:
+            session.close()
     
     def search_cases(self, keyword: str) -> list:
         """搜索案件"""
@@ -164,6 +217,23 @@ class DatabaseManager:
                  SRRCase.I_nature_of_request.contains(keyword))
             ).all()
             return [self._case_to_dict(case) for case in cases]
+        finally:
+            session.close()
+
+    def search_cases_for_user(self, keyword: str, user_phone: str, role: str = "user") -> List[dict]:
+        """按用户/角色搜索案件，普通用户仅可搜索自己上传的数据。"""
+        session = self.get_session()
+        try:
+            query = session.query(SRRCase).filter(
+                SRRCase.is_active == True,
+                (SRRCase.E_caller_name.contains(keyword) |
+                 SRRCase.G_slope_no.contains(keyword) |
+                 SRRCase.H_location.contains(keyword) |
+                 SRRCase.I_nature_of_request.contains(keyword))
+            )
+            if role not in ("admin", "manager"):
+                query = query.filter(SRRCase.uploaded_by == user_phone)
+            return [self._case_to_dict(case) for case in query.all()]
         finally:
             session.close()
     
@@ -212,6 +282,7 @@ class DatabaseManager:
             'location_statistics': self._parse_json_field(getattr(case, 'location_statistics', None)),
             'original_filename': case.original_filename,
             'file_type': case.file_type,
+            'uploaded_by': getattr(case, 'uploaded_by', None),
             'processing_time': self._format_beijing_time(case.processing_time),
             'created_at': self._format_beijing_time(case.created_at),
             'updated_at': self._format_beijing_time(case.updated_at)
@@ -291,6 +362,22 @@ class DatabaseManager:
             conversation = session.query(ConversationHistory).filter(
                 ConversationHistory.id == conversation_id
             ).first()
+            if conversation:
+                return self._conversation_to_dict(conversation)
+            return None
+        finally:
+            session.close()
+
+    def get_conversation_for_user(self, conversation_id: int, user_phone: str, role: str = "user") -> Optional[dict]:
+        """按用户获取对话，防止IDOR。"""
+        session = self.get_session()
+        try:
+            query = session.query(ConversationHistory).filter(
+                ConversationHistory.id == conversation_id
+            )
+            if role not in ("admin", "manager"):
+                query = query.filter(ConversationHistory.user_phone == user_phone)
+            conversation = query.first()
             if conversation:
                 return self._conversation_to_dict(conversation)
             return None
@@ -383,6 +470,20 @@ class DatabaseManager:
             conversations = session.query(ConversationHistory).filter(
                 ConversationHistory.case_id == case_id
             ).order_by(ConversationHistory.created_at.desc()).all()
+            return [self._conversation_to_dict(conv) for conv in conversations]
+        finally:
+            session.close()
+
+    def get_conversations_by_case_for_user(self, case_id: int, user_phone: str, role: str = "user") -> List[dict]:
+        """按用户/角色获取案件对话列表。"""
+        session = self.get_session()
+        try:
+            query = session.query(ConversationHistory).filter(
+                ConversationHistory.case_id == case_id
+            )
+            if role not in ("admin", "manager"):
+                query = query.filter(ConversationHistory.user_phone == user_phone)
+            conversations = query.order_by(ConversationHistory.created_at.desc()).all()
             return [self._conversation_to_dict(conv) for conv in conversations]
         finally:
             session.close()
@@ -817,6 +918,79 @@ class DatabaseManager:
             return False
         finally:
             session.close()
+
+    # ============== 知识库文件权限方法 ==============
+
+    def get_kb_files_for_user(self, user_phone: str, role: str = "user") -> List[dict]:
+        """按用户/角色获取知识库文件列表。"""
+        session = self.get_session()
+        try:
+            query = session.query(KnowledgeBaseFile).filter(
+                KnowledgeBaseFile.is_active == True
+            )
+            if role not in ("admin", "manager"):
+                query = query.filter(KnowledgeBaseFile.uploaded_by == user_phone)
+            files = query.order_by(KnowledgeBaseFile.upload_time.desc()).all()
+            return [self._kb_file_to_dict(f) for f in files]
+        finally:
+            session.close()
+
+    def get_kb_file_for_user(self, file_id: int, user_phone: str, role: str = "user") -> Optional[dict]:
+        """按用户/角色获取单个知识库文件。"""
+        session = self.get_session()
+        try:
+            query = session.query(KnowledgeBaseFile).filter(
+                KnowledgeBaseFile.id == file_id,
+                KnowledgeBaseFile.is_active == True
+            )
+            if role not in ("admin", "manager"):
+                query = query.filter(KnowledgeBaseFile.uploaded_by == user_phone)
+            kb_file = query.first()
+            return self._kb_file_to_dict(kb_file) if kb_file else None
+        finally:
+            session.close()
+
+    def soft_delete_kb_file_for_user(self, file_id: int, user_phone: str, role: str = "user") -> bool:
+        """按用户/角色软删除知识库文件。"""
+        session = self.get_session()
+        try:
+            query = session.query(KnowledgeBaseFile).filter(
+                KnowledgeBaseFile.id == file_id,
+                KnowledgeBaseFile.is_active == True
+            )
+            if role not in ("admin", "manager"):
+                query = query.filter(KnowledgeBaseFile.uploaded_by == user_phone)
+            kb_file = query.first()
+            if not kb_file:
+                return False
+            kb_file.is_active = False
+            session.commit()
+            return True
+        except Exception as e:
+            session.rollback()
+            print(f"❌ 软删除知识库文件失败: {e}")
+            return False
+        finally:
+            session.close()
+
+    def _kb_file_to_dict(self, kb_file: KnowledgeBaseFile) -> dict:
+        """将知识库文件对象转换为字典。"""
+        return {
+            "id": kb_file.id,
+            "filename": kb_file.filename,
+            "file_type": kb_file.file_type,
+            "file_path": kb_file.file_path,
+            "file_size": kb_file.file_size,
+            "mime_type": kb_file.mime_type,
+            "uploaded_by": kb_file.uploaded_by,
+            "upload_time": kb_file.upload_time.isoformat() if kb_file.upload_time else None,
+            "processed": kb_file.processed,
+            "chunk_count": kb_file.chunk_count,
+            "preview_text": kb_file.preview_text,
+            "metadata": kb_file.get_metadata(),
+            "processing_error": kb_file.processing_error,
+            "vector_ids": kb_file.get_vector_ids(),
+        }
 
 # 全局data库managerinstance
 _db_manager = None

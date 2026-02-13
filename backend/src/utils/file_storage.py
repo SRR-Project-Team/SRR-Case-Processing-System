@@ -20,6 +20,7 @@ backend/data/rag_files/{year}/{month}/{filename}
 
 import os
 import shutil
+import re
 from datetime import datetime
 from typing import Optional, Tuple
 import pytz
@@ -27,6 +28,20 @@ from pathlib import Path
 
 # Default short preview length (stored in DB)
 DEFAULT_PREVIEW_LENGTH = 500
+
+
+def sanitize_filename(original_filename: str, max_base_length: int = 120) -> str:
+    """
+    Sanitize user-provided filename to prevent traversal and unsafe characters.
+    """
+    name = Path(original_filename or "").name.replace("\x00", "").strip()
+    if not name:
+        return "upload.bin"
+    base, ext = os.path.splitext(name)
+    safe_base = re.sub(r"[^A-Za-z0-9._-]", "_", base).strip("._")
+    safe_base = safe_base[:max_base_length] or "upload"
+    safe_ext = re.sub(r"[^A-Za-z0-9.]", "", ext)[:10]
+    return f"{safe_base}{safe_ext}"
 
 
 def get_rag_storage_path() -> str:
@@ -76,7 +91,8 @@ def save_rag_file(file_content: bytes, original_filename: str) -> Tuple[str, str
     
     # 生成唯一文件名（添加时间戳避免重复）
     timestamp = int(now.timestamp())
-    filename_parts = os.path.splitext(original_filename)
+    safe_original_filename = sanitize_filename(original_filename)
+    filename_parts = os.path.splitext(safe_original_filename)
     unique_filename = f"{filename_parts[0]}_{timestamp}{filename_parts[1]}"
     
     # 保存文件

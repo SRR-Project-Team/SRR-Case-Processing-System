@@ -41,8 +41,9 @@ interface AuthProviderProps {
  * 
  * Manages user authentication state and provides:
  * - Login/logout functionality
- * - Token storage in localStorage
- * - Automatic state restoration from localStorage
+ * - Stage 1: Token storage in localStorage with centralized unauthorized handling
+ * - Stage 2 (planned): move to HttpOnly secure cookie-based auth
+ * - Automatic state restoration from localStorage (until Stage 2 migration)
  * - User information management
  */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {

@@ -79,6 +79,14 @@ const apiClient = axios.create({
   timeout: 120000, // 120 seconds timeout (2 minutes) - reserved for RCC OCR processing
 });
 
+// Stage 1 of token hardening: centralize token-clearing behavior.
+// Stage 2 (planned): migrate to HttpOnly secure cookies and remove localStorage token usage.
+const clearAuthState = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  window.dispatchEvent(new Event('auth:unauthorized'));
+};
+
 // Request interceptor: automatically add token to headers
 apiClient.interceptors.request.use(
   (config) => {
@@ -98,11 +106,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid, clear local storage and redirect to login
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      // Trigger a custom event for AuthContext to handle
-      window.dispatchEvent(new Event('auth:unauthorized'));
+      clearAuthState();
     }
     return Promise.reject(error);
   }
@@ -120,6 +124,21 @@ export interface ProcessFileStreamCallbacks {
 
 const API_BASE_URL_EXPORT = process.env.REACT_APP_API_URL || 'http://localhost:8001';
 
+const attachAuthHeader = (headers: Record<string, string> = {}): Record<string, string> => {
+  const token = localStorage.getItem('token');
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
+};
+
+const fetchWithAuth = async (input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> => {
+  const headers: Record<string, string> = attachAuthHeader((init.headers as Record<string, string>) || {});
+  const response = await fetch(input, { ...init, headers });
+  if (response.status === 401) {
+    clearAuthState();
+  }
+  return response;
+};
+
 export const processFileStream = async (
   file: File,
   options?: { forceReprocess?: boolean },
@@ -130,13 +149,8 @@ export const processFileStream = async (
   if (options?.forceReprocess) {
     formData.append('force_reprocess', 'true');
   }
-  const token = localStorage.getItem('token');
-  const headers: Record<string, string> = {};
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-
-  const res = await fetch(`${API_BASE_URL_EXPORT}/api/process-srr-file`, {
+  const res = await fetchWithAuth(`${API_BASE_URL_EXPORT}/api/process-srr-file`, {
     method: 'POST',
-    headers,
     body: formData,
   });
 
@@ -241,13 +255,8 @@ export const processMultipleFilesStream = async (
 ): Promise<BatchProcessingResponse> => {
   const formData = new FormData();
   files.forEach((file) => formData.append('files', file));
-  const token = localStorage.getItem('token');
-  const headers: Record<string, string> = {};
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-
-  const res = await fetch(`${API_BASE_URL_EXPORT}/api/process-multiple-files/stream`, {
+  const res = await fetchWithAuth(`${API_BASE_URL_EXPORT}/api/process-multiple-files/stream`, {
     method: 'POST',
-    headers,
     body: formData,
   });
 
@@ -349,10 +358,7 @@ export interface LlmModelsResponse {
 }
 
 export const getLlmModels = async (): Promise<LlmModelsResponse> => {
-  const token = localStorage.getItem('token');
-  const headers: Record<string, string> = {};
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE_URL}/api/llm-models`, { headers });
+  const res = await fetchWithAuth(`${API_BASE_URL}/api/llm-models`);
   if (!res.ok) throw new Error(`Failed to fetch LLM models: ${res.status}`);
   return res.json();
 };
@@ -375,11 +381,10 @@ export const queryCaseStream = async (
   onChunk: (text: string) => void
 ): Promise<string> => {
   const { query, context, raw_content, provider, model } = request;
-  const token = localStorage.getItem('token');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  attachAuthHeader(headers);
 
   const body: Record<string, unknown> = {
     query,
@@ -389,7 +394,7 @@ export const queryCaseStream = async (
   if (provider != null) body.provider = provider;
   if (model != null) body.model = model;
 
-  const res = await fetch(`${API_BASE_URL}/api/chat/stream`, {
+  const res = await fetchWithAuth(`${API_BASE_URL}/api/chat/stream`, {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
@@ -531,10 +536,9 @@ export const generateReplyDraftStream = async (
   },
   onChunk: (text: string) => void
 ): Promise<{ conversation_id: number; fullText: string }> => {
-  const token = localStorage.getItem('token');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE_URL}/api/generate-reply-draft/stream`, {
+  attachAuthHeader(headers);
+  const res = await fetchWithAuth(`${API_BASE_URL}/api/generate-reply-draft/stream`, {
     method: 'POST',
     headers,
     body: JSON.stringify(request),

@@ -32,6 +32,8 @@ import time
 import traceback
 import logging
 import json
+from pathlib import Path
+from uuid import uuid4
 from pydantic import BaseModel
 
 # Calculate backend directory path (used for .env file and module imports)
@@ -232,13 +234,12 @@ app.add_middleware(
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler, ensures CORS headers are returned even on errors"""
     error_detail = {
-        "error": str(exc),
         "type": type(exc).__name__,
         "path": str(request.url),
         "method": request.method
     }
-    # Print detailed error information to logs
-    print(f"❌ Global exception caught: {error_detail}")
+    # Keep detailed diagnostics in server logs only
+    print(f"❌ Global exception caught: {error_detail}, detail={exc}")
     traceback.print_exc()
     
     # Get the Origin header from the request
@@ -255,7 +256,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=error_detail,
+        content={"status": "error", "message": "Internal server error"},
         headers=cors_headers
     )
 
@@ -288,8 +289,11 @@ async def startup_event():
     import importlib
     import config.settings as settings_module
     importlib.reload(settings_module)
-    from config.settings import LLM_API_KEY, LLM_PROVIDER, OPENAI_PROXY_URL, OPENAI_USE_PROXY
+    from config.settings import LLM_API_KEY, LLM_PROVIDER, OPENAI_PROXY_URL, OPENAI_USE_PROXY, ensure_security_config
     
+    # Fail fast on missing/weak security config in secure mode
+    ensure_security_config()
+
     # Also check directly from environment variable as fallback
     import os
     api_key = LLM_API_KEY or os.getenv("OPENAI_API_KEY")
@@ -317,6 +321,28 @@ async def startup_event():
 # Used for storing uploaded files, automatically cleaned up after processing
 TEMP_DIR = tempfile.mkdtemp()
 print(f"📁 Temporary file directory: {TEMP_DIR}")
+
+
+def _sanitize_filename(filename: str, max_length: int = 120) -> str:
+    """Sanitize user-provided filename to prevent traversal and unsafe chars."""
+    cleaned = Path(filename or "").name.replace("\x00", "").strip()
+    if not cleaned:
+        cleaned = "upload.bin"
+    base, ext = os.path.splitext(cleaned)
+    safe_base = "".join(ch if ch.isalnum() or ch in ("-", "_", ".") else "_" for ch in base)
+    safe_base = safe_base.strip("._") or "upload"
+    safe_ext = "".join(ch for ch in ext[:10] if ch.isalnum() or ch == ".")
+    return f"{safe_base[:max_length]}{safe_ext}"
+
+
+def _build_safe_temp_path(filename: str) -> str:
+    """Generate collision-resistant safe temp file path under TEMP_DIR."""
+    safe_name = _sanitize_filename(filename)
+    return os.path.join(TEMP_DIR, f"{uuid4().hex}_{safe_name}")
+
+
+def _user_role(current_user: dict) -> str:
+    return (current_user or {}).get("role", "user")
 
 
 def determine_file_processing_type(filename: str, content_type: str) -> str:
@@ -959,7 +985,7 @@ async def process_srr_file(
                 yield sse_event("error", {"error": "Unsupported file type or filename format. Supported: TXT files, or PDF files starting with ASD/RCC"})
                 return
 
-            file_path = os.path.join(TEMP_DIR, file.filename)
+            file_path = _build_safe_temp_path(file.filename)
             file_size = 0
             file_content_bytes = b""
             with open(file_path, "wb") as buffer:
@@ -1170,7 +1196,7 @@ async def process_multiple_files(files: List[UploadFile] = File(...)):
             if not validate_file_type_extended(file.content_type, file.filename):
                 print(f"⚠️ Skipping unsupported file type: {file.filename}")
                 continue
-            file_path = os.path.join(TEMP_DIR, file.filename)
+            file_path = _build_safe_temp_path(file.filename)
             with open(file_path, "wb") as buffer:
                 buffer.write(await file.read())
             temp_files[file.filename] = file_path
@@ -1331,7 +1357,7 @@ async def process_multiple_files_stream(files: List[UploadFile] = File(...)):
             for file in files:
                 if not validate_file_type_extended(file.content_type, file.filename):
                     continue
-                file_path = os.path.join(TEMP_DIR, file.filename)
+                file_path = _build_safe_temp_path(file.filename)
                 with open(file_path, "wb") as buffer:
                     buffer.write(await file.read())
                 temp_files[file.filename] = file_path
@@ -1449,16 +1475,25 @@ async def get_cases(
     current_user: dict = Depends(get_current_user)
 ):
     """Get case list (requires authentication)"""
-    cases = db_manager.get_cases(limit, offset)
+    cases = db_manager.get_cases_for_user(
+        user_phone=current_user["phone_number"],
+        role=_user_role(current_user),
+        limit=limit,
+        offset=offset
+    )
     return {"cases": cases, "total": len(cases)}
 
 @app.get("/api/cases/{case_id}")
-async def get_case(case_id: int):
+async def get_case(case_id: int, current_user: dict = Depends(get_current_user)):
     """Get single case"""
-    case = db_manager.get_case(case_id)
+    case = db_manager.get_case_for_user(
+        case_id=case_id,
+        user_phone=current_user["phone_number"],
+        role=_user_role(current_user)
+    )
     if case:
         return case
-    return {"error": "Case does not exist"}
+    return JSONResponse(status_code=404, content={"status": "error", "message": "Case does not exist or forbidden"})
 
 
 @app.get("/api/cases/{case_id}/details")
@@ -1467,10 +1502,18 @@ async def get_case_details(
     current_user: dict = Depends(get_current_user)
 ):
     """Get case with full details: basic info, processing info, conversations (draft replies), attachments (original file info)"""
-    case = db_manager.get_case(case_id)
+    case = db_manager.get_case_for_user(
+        case_id=case_id,
+        user_phone=current_user["phone_number"],
+        role=_user_role(current_user)
+    )
     if not case:
-        return {"error": "Case does not exist"}
-    conversations = db_manager.get_conversations_by_case(case_id)
+        return JSONResponse(status_code=404, content={"status": "error", "message": "Case does not exist or forbidden"})
+    conversations = db_manager.get_conversations_by_case_for_user(
+        case_id=case_id,
+        user_phone=current_user["phone_number"],
+        role=_user_role(current_user)
+    )
     return {
         "case": case,
         "conversations": conversations,
@@ -1478,9 +1521,13 @@ async def get_case_details(
     }
 
 @app.get("/api/cases/search")
-async def search_cases(q: str):
+async def search_cases(q: str, current_user: dict = Depends(get_current_user)):
     """Search cases"""
-    cases = db_manager.search_cases(q)
+    cases = db_manager.search_cases_for_user(
+        keyword=q,
+        user_phone=current_user["phone_number"],
+        role=_user_role(current_user)
+    )
     return {"cases": cases, "query": q}
 
 def _ensure_hybrid_search_service():
@@ -1499,7 +1546,7 @@ def _ensure_hybrid_search_service():
 
 
 @app.post("/api/find-similar-cases")
-async def find_similar_cases(case_data: dict):
+async def find_similar_cases(case_data: dict, current_user: dict = Depends(get_current_user)):
     """
     Find similar historical cases (hybrid: vector recall + weighted rerank).
     Falls back to weight-only search if vector store is empty. Results cached (max 100).
@@ -1558,10 +1605,9 @@ async def find_similar_cases(case_data: dict):
         }
         set_cached_response(case_data, limit, min_similarity, response)
         return response
-    except Exception as e:
-        import traceback
+    except Exception:
         traceback.print_exc()
-        return {"status": "error", "message": f"Failed to find similar cases: {str(e)}"}
+        return {"status": "error", "message": "Failed to find similar cases"}
 
 
 @app.get("/api/search-cache-stats")
@@ -1810,7 +1856,8 @@ async def chatClientStream(Request: ChatRequest):
 async def get_case_statistics(
     location: str = None,
     slope_no: str = None,
-    venue: str = None
+    venue: str = None,
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Get comprehensive statistics from historical Excel/CSV data ONLY
@@ -1845,17 +1892,16 @@ async def get_case_statistics(
             "statistics": stats
         }
         
-    except Exception as e:
-        import traceback
+    except Exception:
         traceback.print_exc()
         return {
             "status": "error",
-            "message": f"Failed to get statistics: {str(e)}"
+            "message": "Failed to get statistics"
         }
 
 
 @app.get("/api/tree-info")
-async def get_tree_info(slope_no: str):
+async def get_tree_info(slope_no: str, current_user: dict = Depends(get_current_user)):
     """
     Get tree information for a specific slope
     Searches tree inventory (32405 trees)
@@ -1881,15 +1927,16 @@ async def get_tree_info(slope_no: str):
             "trees": trees
         }
         
-    except Exception as e:
+    except Exception:
+        traceback.print_exc()
         return {
             "status": "error",
-            "message": f"Failed to get tree information: {str(e)}"
+            "message": "Failed to get tree information"
         }
 
 
 @app.get("/api/location-slopes")
-async def get_location_slopes(location: str):
+async def get_location_slopes(location: str, current_user: dict = Depends(get_current_user)):
     """
     Get slope numbers associated with a location
     Uses historical learning from 5,298 cases
@@ -1916,10 +1963,11 @@ async def get_location_slopes(location: str):
             "note": "Learned from historical complaint records"
         }
         
-    except Exception as e:
+    except Exception:
+        traceback.print_exc()
         return {
             "status": "error",
-            "message": f"Failed to get slopes for location: {str(e)}"
+            "message": "Failed to get slopes for location"
         }
 
 
@@ -2072,15 +2120,13 @@ async def generate_reply_draft(request: ReplyDraftRequest):
             "language": language
         }
         
-    except Exception as e:
-        error_msg = str(e)
+    except Exception:
         traceback.print_exc()
         return JSONResponse(
             status_code=500,
             content={
                 "status": "error",
-                "message": f"Reply draft generation failed: {error_msg}",
-                "details": traceback.format_exc()
+                "message": "Reply draft generation failed"
             }
         )
 
@@ -2146,23 +2192,25 @@ async def generate_reply_draft_stream(request: ReplyDraftRequest):
                     db_manager.add_message_to_conversation(conversation_id, 'assistant', draft_text, language)
                     db_manager.update_conversation(conversation_id, {'draft_reply': draft_text, 'status': 'completed'})
                 yield f"data: {json_mod.dumps({'type': 'done', 'conversation_id': conversation_id})}\n\n"
-            except Exception as e:
-                yield f"data: {json_mod.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            except Exception:
+                traceback.print_exc()
+                yield f"data: {json_mod.dumps({'type': 'error', 'error': 'Reply draft stream failed'})}\n\n"
 
         return StreamingResponse(
             event_stream(),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
         )
-    except Exception as e:
+    except Exception:
+        traceback.print_exc()
         return JSONResponse(
             status_code=500,
-            content={"status": "error", "message": str(e)}
+            content={"status": "error", "message": "Reply draft stream failed"}
         )
 
 
 @app.get("/api/conversation/{conversation_id}")
-async def get_conversation(conversation_id: int):
+async def get_conversation(conversation_id: int, current_user: dict = Depends(get_current_user)):
     """
     获取对话历史
     
@@ -2173,7 +2221,11 @@ async def get_conversation(conversation_id: int):
         dict: 对话历史数据
     """
     try:
-        conversation = db_manager.get_conversation(conversation_id)
+        conversation = db_manager.get_conversation_for_user(
+            conversation_id=conversation_id,
+            user_phone=current_user["phone_number"],
+            role=_user_role(current_user)
+        )
         if not conversation:
             return JSONResponse(
                 status_code=404,
@@ -2188,22 +2240,26 @@ async def get_conversation(conversation_id: int):
             "conversation": conversation
         }
         
-    except Exception as e:
-        error_msg = str(e)
+    except Exception:
+        traceback.print_exc()
         return JSONResponse(
             status_code=500,
             content={
                 "status": "error",
-                "message": f"Failed to get conversation: {error_msg}"
+                "message": "Failed to get conversation"
             }
         )
 
 
 @app.delete("/api/conversation/{conversation_id}/draft")
-async def delete_conversation_draft(conversation_id: int):
+async def delete_conversation_draft(conversation_id: int, current_user: dict = Depends(get_current_user)):
     """Clear the draft reply for a conversation. Does not delete the conversation or message history."""
     try:
-        conversation = db_manager.get_conversation(conversation_id)
+        conversation = db_manager.get_conversation_for_user(
+            conversation_id=conversation_id,
+            user_phone=current_user["phone_number"],
+            role=_user_role(current_user)
+        )
         if not conversation:
             return JSONResponse(
                 status_code=404,
@@ -2211,10 +2267,11 @@ async def delete_conversation_draft(conversation_id: int):
             )
         db_manager.update_conversation(conversation_id, {"draft_reply": None})
         return {"status": "success", "message": "Draft deleted"}
-    except Exception as e:
+    except Exception:
+        traceback.print_exc()
         return JSONResponse(
             status_code=500,
-            content={"status": "error", "message": str(e)}
+            content={"status": "error", "message": "Failed to delete conversation draft"}
         )
 
 
@@ -2305,7 +2362,11 @@ async def _process_rag_file_background(
 
 
 @app.post("/api/rag-files/upload")
-async def upload_rag_file(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+async def upload_rag_file(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
     """
     Upload RAG knowledge base file (processing runs in background).
 
@@ -2339,6 +2400,7 @@ async def upload_rag_file(background_tasks: BackgroundTasks, file: UploadFile = 
                 file_path=relative_path,
                 file_size=file_size,
                 mime_type=file.content_type or "application/octet-stream",
+                uploaded_by=current_user["phone_number"],
                 processed=False,
             )
             session.add(kb_file)
@@ -2376,17 +2438,17 @@ async def upload_rag_file(background_tasks: BackgroundTasks, file: UploadFile = 
                 "data": result,
             },
         )
-    except Exception as e:
-        print(f"❌ Upload failed: {e}")
+    except Exception:
+        print("❌ Upload failed")
         traceback.print_exc()
         return JSONResponse(
             status_code=500,
-            content={"status": "error", "message": str(e)},
+            content={"status": "error", "message": "Upload failed"},
         )
 
 
 @app.get("/api/rag-files")
-async def get_rag_files():
+async def get_rag_files(current_user: dict = Depends(get_current_user)):
     """
     Get all RAG knowledge base files list
     
@@ -2394,57 +2456,24 @@ async def get_rag_files():
         List of file information
     """
     try:
-        from database.models import KnowledgeBaseFile
-        from database.manager import get_db_manager
-        
-        db_manager = get_db_manager()
-        session = db_manager.get_session()
-        
-        try:
-            files = session.query(KnowledgeBaseFile).filter(
-                KnowledgeBaseFile.is_active == True
-            ).order_by(KnowledgeBaseFile.upload_time.desc()).all()
-            
-            result = []
-            for f in files:
-                result.append({
-                    "id": f.id,
-                    "filename": f.filename,
-                    "file_type": f.file_type,
-                    "file_size": f.file_size,
-                    "upload_time": f.upload_time.isoformat(),
-                    "processed": f.processed,
-                    "chunk_count": f.chunk_count,
-                    "processing_error": f.processing_error
-                })
-            
-            session.close()
-            
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "status": "success",
-                    "data": result
-                }
-            )
-            
-        except Exception as e:
-            session.close()
-            raise e
-            
-    except Exception as e:
-        print(f"❌ Get files failed: {e}")
+        files = db_manager.get_kb_files_for_user(
+            user_phone=current_user["phone_number"],
+            role=_user_role(current_user)
+        )
+        return JSONResponse(
+            status_code=200,
+            content={"status": "success", "data": files}
+        )
+    except Exception:
+        traceback.print_exc()
         return JSONResponse(
             status_code=500,
-            content={
-                "status": "error",
-                "message": f"Get files failed: {str(e)}"
-            }
+            content={"status": "error", "message": "Get files failed"}
         )
 
 
 @app.get("/api/rag-files/{file_id}")
-async def get_rag_file_details(file_id: int):
+async def get_rag_file_details(file_id: int, current_user: dict = Depends(get_current_user)):
     """
     Get single RAG file details
     
@@ -2452,70 +2481,30 @@ async def get_rag_file_details(file_id: int):
         Complete file information including preview and metadata
     """
     try:
-        from database.models import KnowledgeBaseFile
-        from database.manager import get_db_manager
-        
-        db_manager = get_db_manager()
-        session = db_manager.get_session()
-        
-        try:
-            kb_file = session.query(KnowledgeBaseFile).filter(
-                KnowledgeBaseFile.id == file_id,
-                KnowledgeBaseFile.is_active == True
-            ).first()
-            
-            if not kb_file:
-                session.close()
-                return JSONResponse(
-                    status_code=404,
-                    content={
-                        "status": "error",
-                        "message": "File not found"
-                    }
-                )
-            
-            result = {
-                "id": kb_file.id,
-                "filename": kb_file.filename,
-                "file_type": kb_file.file_type,
-                "file_path": kb_file.file_path,
-                "file_size": kb_file.file_size,
-                "mime_type": kb_file.mime_type,
-                "upload_time": kb_file.upload_time.isoformat(),
-                "processed": kb_file.processed,
-                "chunk_count": kb_file.chunk_count,
-                "preview_text": kb_file.preview_text,
-                "metadata": kb_file.get_metadata(),
-                "processing_error": kb_file.processing_error
-            }
-            
-            session.close()
-            
+        kb_file = db_manager.get_kb_file_for_user(
+            file_id=file_id,
+            user_phone=current_user["phone_number"],
+            role=_user_role(current_user)
+        )
+        if not kb_file:
             return JSONResponse(
-                status_code=200,
-                content={
-                    "status": "success",
-                    "data": result
-                }
+                status_code=404,
+                content={"status": "error", "message": "File not found or forbidden"}
             )
-            
-        except Exception as e:
-            session.close()
-            raise e
-            
-    except Exception as e:
-        print(f"❌ Get file details failed: {e}")
+        return JSONResponse(
+            status_code=200,
+            content={"status": "success", "data": kb_file}
+        )
+    except Exception:
+        traceback.print_exc()
         return JSONResponse(
             status_code=500,
-            content={
-                "status": "error",
-                "message": f"Get file details failed: {str(e)}"
-            }
+            content={"status": "error", "message": "Get file details failed"}
         )
 
 
 @app.get("/api/rag-files/{file_id}/download")
-async def download_rag_file(file_id: int):
+async def download_rag_file(file_id: int, current_user: dict = Depends(get_current_user)):
     """
     Download original RAG file
     
@@ -2523,143 +2512,95 @@ async def download_rag_file(file_id: int):
         File download response
     """
     try:
-        from database.models import KnowledgeBaseFile
-        from database.manager import get_db_manager
         from utils.file_storage import get_absolute_path, file_exists
         from fastapi.responses import FileResponse
-        
-        db_manager = get_db_manager()
-        session = db_manager.get_session()
-        
-        try:
-            kb_file = session.query(KnowledgeBaseFile).filter(
-                KnowledgeBaseFile.id == file_id,
-                KnowledgeBaseFile.is_active == True
-            ).first()
-            
-            if not kb_file:
-                session.close()
-                return JSONResponse(
-                    status_code=404,
-                    content={
-                        "status": "error",
-                        "message": "File not found"
-                    }
-                )
-            
-            # Get absolute file path
-            file_path = get_absolute_path(kb_file.file_path)
-            
-            if not file_exists(file_path):
-                session.close()
-                return JSONResponse(
-                    status_code=404,
-                    content={
-                        "status": "error",
-                        "message": "Physical file not found"
-                    }
-                )
-            
-            session.close()
-            
-            # Return file download response
-            return FileResponse(
-                path=file_path,
-                filename=kb_file.filename,
-                media_type=kb_file.mime_type
+        kb_file = db_manager.get_kb_file_for_user(
+            file_id=file_id,
+            user_phone=current_user["phone_number"],
+            role=_user_role(current_user)
+        )
+        if not kb_file:
+            return JSONResponse(
+                status_code=404,
+                content={"status": "error", "message": "File not found or forbidden"}
             )
-            
-        except Exception as e:
-            session.close()
-            raise e
-            
-    except Exception as e:
-        print(f"❌ Download file failed: {e}")
+
+        file_path = get_absolute_path(kb_file["file_path"])
+        if not file_exists(file_path):
+            return JSONResponse(
+                status_code=404,
+                content={"status": "error", "message": "Physical file not found"}
+            )
+
+        return FileResponse(
+            path=file_path,
+            filename=kb_file["filename"],
+            media_type=kb_file["mime_type"]
+        )
+    except Exception:
+        traceback.print_exc()
         return JSONResponse(
             status_code=500,
-            content={
-                "status": "error",
-                "message": f"Download file failed: {str(e)}"
-            }
+            content={"status": "error", "message": "Download file failed"}
         )
 
 
 @app.delete("/api/rag-files/{file_id}")
-async def delete_rag_file(file_id: int):
+async def delete_rag_file(file_id: int, current_user: dict = Depends(get_current_user)):
     """
     Delete RAG file
     
     Operations: Delete physical file → Delete SurrealDB vectors → Delete SQLite record
     """
     try:
-        from database.models import KnowledgeBaseFile
-        from database.manager import get_db_manager
         from utils.file_storage import delete_rag_file as delete_file_storage
-        
-        db_manager = get_db_manager()
-        session = db_manager.get_session()
-        
-        try:
-            kb_file = session.query(KnowledgeBaseFile).filter(
-                KnowledgeBaseFile.id == file_id,
-                KnowledgeBaseFile.is_active == True
-            ).first()
-            
-            if not kb_file:
-                session.close()
-                return JSONResponse(
-                    status_code=404,
-                    content={
-                        "status": "error",
-                        "message": "File not found"
-                    }
-                )
-            
-            file_path = kb_file.file_path
-            
-            # Delete vectors from SurrealDB
-            if kb_file.processed and kb_file.chunk_count > 0:
-                try:
-                    vector_store_path = os.path.join(backend_dir, 'data', 'surrealdb')
-                    vector_store = SurrealDBSyncClient(vector_store_path)
-                    deleted_count = await vector_store.delete_vectors_by_file_id_sync(f"rag_file_{file_id}")
-                    print(f"🗑️ Deleted {deleted_count} vectors from SurrealDB")
-                except Exception as e:
-                    print(f"⚠️ Failed to delete vectors: {e}")
-            
-            # Delete physical file
-            try:
-                delete_file_storage(file_path)
-            except Exception as e:
-                print(f"⚠️ Failed to delete physical file: {e}")
-            
-            # Soft delete database record
-            kb_file.is_active = False
-            session.commit()
-            session.close()
-            
+        kb_file = db_manager.get_kb_file_for_user(
+            file_id=file_id,
+            user_phone=current_user["phone_number"],
+            role=_user_role(current_user)
+        )
+        if not kb_file:
             return JSONResponse(
-                status_code=200,
-                content={
-                    "status": "success",
-                    "message": "File deleted successfully"
-                }
+                status_code=404,
+                content={"status": "error", "message": "File not found or forbidden"}
             )
-            
-        except Exception as e:
-            session.rollback()
-            session.close()
-            raise e
-            
-    except Exception as e:
-        print(f"❌ Delete file failed: {e}")
+
+        file_path = kb_file["file_path"]
+
+        if kb_file["processed"] and kb_file["chunk_count"] > 0:
+            try:
+                vector_store_path = os.path.join(backend_dir, 'data', 'surrealdb')
+                vector_store = SurrealDBSyncClient(vector_store_path)
+                deleted_count = await vector_store.delete_vectors_by_file_id_sync(f"rag_file_{file_id}")
+                print(f"🗑️ Deleted {deleted_count} vectors from SurrealDB")
+            except Exception as vec_error:
+                print(f"⚠️ Failed to delete vectors: {vec_error}")
+
+        try:
+            delete_file_storage(file_path)
+        except Exception as file_error:
+            print(f"⚠️ Failed to delete physical file: {file_error}")
+
+        deleted = db_manager.soft_delete_kb_file_for_user(
+            file_id=file_id,
+            user_phone=current_user["phone_number"],
+            role=_user_role(current_user)
+        )
+        if not deleted:
+            return JSONResponse(
+                status_code=403,
+                content={"status": "error", "message": "Delete forbidden"}
+            )
+
+        return JSONResponse(
+            status_code=200,
+            content={"status": "success", "message": "File deleted successfully"}
+        )
+    except Exception:
         traceback.print_exc()
         return JSONResponse(
             status_code=500,
-            content={
-                "status": "error",
-                "message": f"Delete file failed: {str(e)}"
-            }
+            content={"status": "error", "message": "Delete file failed"}
         )
 
 
@@ -2669,6 +2610,7 @@ async def get_rag_file_preview(
     full: bool = False,
     offset: int = 0,
     limit: Optional[int] = None,
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Get file preview content.
@@ -2676,73 +2618,47 @@ async def get_rag_file_preview(
     With full=true or offset/limit: read from file (paginated or full).
     """
     try:
-        from database.models import KnowledgeBaseFile
-        from database.manager import get_db_manager
         from utils.file_storage import get_file_preview_slice
-        
-        db_manager = get_db_manager()
-        session = db_manager.get_session()
-        
-        try:
-            kb_file = session.query(KnowledgeBaseFile).filter(
-                KnowledgeBaseFile.id == file_id,
-                KnowledgeBaseFile.is_active == True
-            ).first()
-            
-            if not kb_file:
-                session.close()
-                return JSONResponse(
-                    status_code=404,
-                    content={
-                        "status": "error",
-                        "message": "File not found"
-                    }
-                )
-            
-            file_path = kb_file.file_path
-            file_type = kb_file.file_type
-            session.close()
-            
-            if full or limit is not None or offset > 0:
-                # On-demand read: slice or full
-                read_limit = None if full and limit is None else (limit or 100_000)
-                preview_content, total_length = get_file_preview_slice(
-                    file_path, file_type, offset=offset, limit=read_limit
-                )
-                if preview_content is None:
-                    preview_content = kb_file.preview_text or ""
-                    total_length = len(preview_content)
-            else:
-                preview_content = kb_file.preview_text or ""
-                total_length = len(preview_content)
-            
-            result = {
-                "filename": kb_file.filename,
-                "file_type": file_type,
-                "preview_content": preview_content,
-                "total_length": total_length,
-            }
-            
+        kb_file = db_manager.get_kb_file_for_user(
+            file_id=file_id,
+            user_phone=current_user["phone_number"],
+            role=_user_role(current_user)
+        )
+        if not kb_file:
             return JSONResponse(
-                status_code=200,
-                content={
-                    "status": "success",
-                    "data": result
-                }
+                status_code=404,
+                content={"status": "error", "message": "File not found or forbidden"}
             )
-            
-        except Exception as e:
-            session.close()
-            raise e
-            
-    except Exception as e:
-        print(f"❌ Get file preview failed: {e}")
+
+        file_path = kb_file["file_path"]
+        file_type = kb_file["file_type"]
+        if full or limit is not None or offset > 0:
+            read_limit = None if full and limit is None else (limit or 100_000)
+            preview_content, total_length = get_file_preview_slice(
+                file_path, file_type, offset=offset, limit=read_limit
+            )
+            if preview_content is None:
+                preview_content = kb_file.get("preview_text") or ""
+                total_length = len(preview_content)
+        else:
+            preview_content = kb_file.get("preview_text") or ""
+            total_length = len(preview_content)
+
+        result = {
+            "filename": kb_file["filename"],
+            "file_type": file_type,
+            "preview_content": preview_content,
+            "total_length": total_length,
+        }
+        return JSONResponse(
+            status_code=200,
+            content={"status": "success", "data": result}
+        )
+    except Exception:
+        traceback.print_exc()
         return JSONResponse(
             status_code=500,
-            content={
-                "status": "error",
-                "message": f"Get file preview failed: {str(e)}"
-            }
+            content={"status": "error", "message": "Get file preview failed"}
         )
 
 

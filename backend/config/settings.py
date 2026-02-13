@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 
 # Auto-load .env file if it exists (before reading environment variables)
@@ -54,3 +55,27 @@ MAX_RAG_CHUNKS = int(os.getenv("MAX_RAG_CHUNKS", "5000"))
 
 # Server: keep-alive timeout (seconds) so long-running clients/proxies don't get dropped
 UVICORN_TIMEOUT_KEEP_ALIVE = int(os.getenv("UVICORN_TIMEOUT_KEEP_ALIVE", "120"))
+
+# Security mode: fail fast on unsafe defaults
+SECURE_MODE = os.getenv("SECURE_MODE", "true").lower() == "true"
+
+
+def _is_weak_jwt_secret(secret: str) -> bool:
+    lowered = (secret or "").lower()
+    if len(secret or "") < 32:
+        return True
+    if re.fullmatch(r"[A-Za-z0-9]+", secret or "") and len(secret or "") < 40:
+        return True
+    weak_markers = ("please-change", "changeme", "default", "secret")
+    return any(marker in lowered for marker in weak_markers)
+
+
+def ensure_security_config() -> None:
+    """Validate required security-related settings."""
+    if not SECURE_MODE:
+        return
+    jwt_secret = os.getenv("JWT_SECRET_KEY", "").strip()
+    if not jwt_secret:
+        raise RuntimeError("JWT_SECRET_KEY is required")
+    if _is_weak_jwt_secret(jwt_secret):
+        raise RuntimeError("JWT_SECRET_KEY is too weak; use at least 32 high-entropy characters")

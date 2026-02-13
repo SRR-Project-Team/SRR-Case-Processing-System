@@ -62,6 +62,8 @@ yarn-error.log*
 
 # Environment files
 backend/.env
+backend/.env.yaml
+backend/.env.yaml.local
 .env
 .env.local
 .env.development.local
@@ -78,9 +80,9 @@ logs/
 # Git backup
 .git_backup/
 
-# # Database
-# *.db
-# *.sqlite3
+# Database
+*.db
+*.sqlite3
 
 # Temporary files
 *.tmp
@@ -109,6 +111,9 @@ example_*
 # API Keys and Secrets
 api_keys.txt
 *.key
+*.pem
+*.crt
+*.p12
 github-actions-key.json
 
 # Excel temp files

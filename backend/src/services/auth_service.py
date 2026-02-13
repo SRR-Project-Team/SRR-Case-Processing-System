@@ -25,10 +25,26 @@ import os
 # 密码上下文配置
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# JWT配置（从环境变量读取，如果没有则使用默认值）
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-please-change-in-production")
+def _is_weak_secret(secret: str) -> bool:
+    weak_markers = ("please-change", "changeme", "default", "secret")
+    lowered = (secret or "").lower()
+    return len(secret or "") < 32 or any(marker in lowered for marker in weak_markers)
+
+
+def _load_jwt_secret() -> str:
+    """Load and validate JWT secret from environment."""
+    secret = os.getenv("JWT_SECRET_KEY", "").strip()
+    if not secret:
+        raise RuntimeError("JWT_SECRET_KEY is required")
+    if _is_weak_secret(secret):
+        raise RuntimeError("JWT_SECRET_KEY is too weak; use at least 32 high-entropy characters")
+    return secret
+
+
+# JWT配置
+SECRET_KEY = _load_jwt_secret()
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # 默认24小时
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))  # 默认1小时
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
