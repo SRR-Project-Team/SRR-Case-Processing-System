@@ -95,6 +95,7 @@ tmp/
 
 # OCR Cache
 # ocr_cache/
+.cache/
 
 # Test files
 test_*.py
